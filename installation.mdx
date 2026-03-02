@@ -1,0 +1,139 @@
+---
+title: "Installation"
+description: "Install terminui and set up your TypeScript project"
+---
+
+# Installation
+
+Get started with terminui by installing the package and configuring TypeScript.
+
+## Install the Package
+
+terminui is available on npm and works with any package manager:
+
+<CodeGroup>
+
+```bash npm
+npm install terminui
+```
+
+```bash yarn
+yarn add terminui
+```
+
+```bash pnpm
+pnpm add terminui
+```
+
+</CodeGroup>
+
+## TypeScript Setup
+
+terminui requires TypeScript and works best with strict mode enabled. Create or update your `tsconfig.json`:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  }
+}
+```
+
+<Note>
+  terminui is built with TypeScript strict mode (`strict: true` and `noUncheckedIndexedAccess: true`) and has zero `any` types for complete type safety.
+</Note>
+
+## JSX Setup (Optional)
+
+If you want to use the JSX API, add these options to your `tsconfig.json`:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "terminui"
+  }
+}
+```
+
+<Tip>
+  You can also use per-file JSX configuration by adding these comments at the top of `.tsx` files:
+  
+  ```tsx
+  /** @jsxRuntime automatic */
+  /** @jsxImportSource terminui */
+  ```
+</Tip>
+
+## Verify Installation
+
+Create a simple test file to verify everything is working:
+
+```typescript test.ts
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  testBackendToString,
+} from 'terminui';
+
+const state = createTestBackendState(40, 5);
+const backend = createTestBackend(state);
+const terminal = createTerminal(backend);
+
+terminalDraw(terminal, (frame) => {
+  // Empty frame - just testing setup
+});
+
+console.log(testBackendToString(state));
+console.log('✓ terminui is installed correctly!');
+```
+
+Run it:
+
+<CodeGroup>
+
+```bash tsx
+npx tsx test.ts
+```
+
+```bash node
+node --loader tsx test.ts
+```
+
+```bash ts-node
+ts-node test.ts
+```
+
+</CodeGroup>
+
+You should see an empty terminal grid followed by the success message.
+
+## Package Exports
+
+terminui provides the following exports:
+
+- **`terminui`** - Core library (widgets, layout, styles, terminal)
+- **`terminui/jsx`** - JSX components and rendering functions
+- **`terminui/jsx-runtime`** - JSX runtime (automatically imported)
+
+```typescript
+// Core API
+import { createTerminal, terminalDraw, createParagraph } from 'terminui';
+
+// JSX API
+import { terminalDrawJsx, Panel, Label } from 'terminui/jsx';
+```
+
+## Next Steps
+
+<Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+  Build your first terminal UI with terminui
+</Card>

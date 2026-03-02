@@ -1,0 +1,357 @@
+---
+title: Gauge
+description: Progress bar widgets for visualizing percentages and ratios
+---
+
+The **Gauge** widget displays progress using horizontal bars with unicode block characters or ASCII styling. terminui provides two gauge variants: standard **Gauge** and **LineGauge**.
+
+## Visual Example
+
+```
+┌Progress──────────────────────────────────────────────┐
+│ ████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
+│ 67%                                                  │
+└──────────────────────────────────────────────────────┘
+```
+
+## Gauge (Block-style)
+
+### Basic Usage
+
+```typescript
+import { gaugePercent, renderGauge, blockBordered, createTitle } from 'terminui';
+
+const gauge = gaugePercent(67, {
+  block: blockBordered({ titles: [createTitle('Progress')] }),
+  useUnicode: true,
+  gaugeStyle: styleFg(createStyle(), Color.Green),
+});
+
+frameRenderWidget(frame, renderGauge(gauge), area);
+```
+
+### GaugeConfig
+
+```typescript
+interface GaugeConfig {
+  readonly ratio: number;          // 0.0 to 1.0
+  readonly label?: Span;           // Optional overlay label
+  readonly useUnicode: boolean;    // Use unicode blocks or ASCII reversed
+  readonly block?: BlockConfig;
+  readonly style: Style;           // Background style
+  readonly gaugeStyle: Style;      // Filled portion style
+}
+```
+
+### Creating Gauges
+
+```typescript
+import { createGauge, gaugePercent } from 'terminui';
+
+// From ratio (0.0 - 1.0)
+const gauge1 = createGauge({ ratio: 0.75 });
+
+// From percentage (0 - 100)
+const gauge2 = gaugePercent(75);
+
+// Both produce the same 75% fill
+```
+
+<Note>
+The `ratio` value is automatically clamped to the range `[0.0, 1.0]`. Values outside this range are adjusted to the nearest boundary.
+</Note>
+
+### Unicode vs ASCII
+
+```typescript
+// Unicode blocks (smooth partial fills)
+const unicode = gaugePercent(67, {
+  useUnicode: true,  // Uses: █ ▉ ▊ ▋ ▌ ▍ ▎ ▏
+  gaugeStyle: styleFg(createStyle(), Color.Green),
+});
+
+// ASCII mode (uses reversed colors)
+const ascii = gaugePercent(67, {
+  useUnicode: false,  // Uses reversed modifier on spaces
+  gaugeStyle: styleFg(createStyle(), Color.Green),
+});
+```
+
+**Unicode mode** uses block characters (█▉▊▋▌▍▎▏) for smooth partial fills.
+
+**ASCII mode** uses reversed spaces for better compatibility with terminals that don't support unicode.
+
+### Adding Labels
+
+```typescript
+import { createSpan } from 'terminui';
+
+const gauge = gaugePercent(67, {
+  label: createSpan('67%'),
+  useUnicode: true,
+  gaugeStyle: styleFg(createStyle(), Color.Cyan),
+});
+```
+
+Labels are centered over the gauge. Characters in the filled portion inherit the `gaugeStyle`, while characters in the unfilled portion inherit the base `style`.
+
+## LineGauge (Horizontal Line)
+
+### Basic Usage
+
+```typescript
+import { createLineGauge, renderLineGauge, line } from 'terminui';
+
+const lineGauge = createLineGauge({
+  ratio: 0.42,
+  label: createSpan('42% '),
+  lineSet: line.THICK,
+  gaugeStyle: styleFg(createStyle(), Color.Yellow),
+});
+
+frameRenderWidget(frame, renderLineGauge(lineGauge), area);
+```
+
+### LineGaugeConfig
+
+```typescript
+interface LineGaugeConfig {
+  readonly ratio: number;
+  readonly label?: Span;           // Left-aligned label
+  readonly lineSet: LineSet;       // Line style (NORMAL, THICK, DOUBLE)
+  readonly block?: BlockConfig;
+  readonly style: Style;           // Unfilled portion style
+  readonly gaugeStyle: Style;      // Filled portion style
+}
+```
+
+### Line Sets
+
+```typescript
+import { line } from 'terminui';
+
+const normal = createLineGauge({
+  ratio: 0.5,
+  lineSet: line.NORMAL,  // ─ horizontal
+});
+
+const thick = createLineGauge({
+  ratio: 0.5,
+  lineSet: line.THICK,   // ━ horizontal (thicker)
+});
+
+const double = createLineGauge({
+  ratio: 0.5,
+  lineSet: line.DOUBLE,  // ═ horizontal (double line)
+});
+```
+
+### Label Positioning
+
+LineGauge labels are left-aligned and the gauge line extends to the right:
+
+```
+Load: ━━━━━━━━━━━━────────
+```
+
+```typescript
+const gauge = createLineGauge({
+  ratio: 0.6,
+  label: createSpan('Load: '),  // Rendered on the left
+  lineSet: line.THICK,
+});
+```
+
+## Styling
+
+### Color Gradients
+
+```typescript
+import { styleFg, createStyle, Color } from 'terminui';
+
+// Green for low values
+const low = gaugePercent(25, {
+  gaugeStyle: styleFg(createStyle(), Color.Green),
+});
+
+// Yellow for medium
+const medium = gaugePercent(50, {
+  gaugeStyle: styleFg(createStyle(), Color.Yellow),
+});
+
+// Red for high
+const high = gaugePercent(90, {
+  gaugeStyle: styleFg(createStyle(), Color.Red),
+});
+```
+
+### Background Styling
+
+```typescript
+const gauge = gaugePercent(60, {
+  style: styleBg(createStyle(), Color.DarkGray),       // Unfilled bg
+  gaugeStyle: styleFg(createStyle(), Color.LightGreen), // Filled fg
+  useUnicode: true,
+});
+```
+
+## Complete Example
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderWidget,
+  createLayout,
+  lengthConstraint,
+  fillConstraint,
+  splitLayout,
+  gaugePercent,
+  renderGauge,
+  createLineGauge,
+  renderLineGauge,
+  blockBordered,
+  createTitle,
+  createSpan,
+  styleFg,
+  createStyle,
+  Color,
+  line,
+} from 'terminui';
+
+const state = createTestBackendState(60, 20);
+const terminal = createTerminal(createTestBackend(state));
+
+terminalDraw(terminal, (frame) => {
+  const layout = createLayout([
+    lengthConstraint(5),   // CPU gauge
+    lengthConstraint(5),   // Memory gauge
+    lengthConstraint(5),   // Disk gauge
+    fillConstraint(1),     // Line gauges
+  ]);
+
+  const [cpuArea, memArea, diskArea, lineArea] = splitLayout(layout, frame.area);
+
+  // CPU Block Gauge
+  const cpuGauge = gaugePercent(67, {
+    block: blockBordered({ titles: [createTitle('CPU')] }),
+    label: createSpan('67%'),
+    useUnicode: true,
+    gaugeStyle: styleFg(createStyle(), Color.Green),
+  });
+  frameRenderWidget(frame, renderGauge(cpuGauge), cpuArea);
+
+  // Memory Block Gauge
+  const memGauge = gaugePercent(82, {
+    block: blockBordered({ titles: [createTitle('Memory')] }),
+    label: createSpan('82%'),
+    useUnicode: true,
+    gaugeStyle: styleFg(createStyle(), Color.Yellow),
+  });
+  frameRenderWidget(frame, renderGauge(memGauge), memArea);
+
+  // Disk Block Gauge
+  const diskGauge = gaugePercent(45, {
+    block: blockBordered({ titles: [createTitle('Disk')] }),
+    label: createSpan('45%'),
+    useUnicode: true,
+    gaugeStyle: styleFg(createStyle(), Color.Cyan),
+  });
+  frameRenderWidget(frame, renderGauge(diskGauge), diskArea);
+
+  // Line Gauges
+  const lineLayout = createLayout([
+    lengthConstraint(1),
+    lengthConstraint(1),
+    lengthConstraint(1),
+  ]);
+  const [line1, line2, line3] = splitLayout(lineLayout, lineArea);
+
+  frameRenderWidget(
+    frame,
+    renderLineGauge(
+      createLineGauge({
+        ratio: 0.67,
+        label: createSpan('Network: '),
+        lineSet: line.THICK,
+        gaugeStyle: styleFg(createStyle(), Color.Cyan),
+      })
+    ),
+    line1
+  );
+
+  frameRenderWidget(
+    frame,
+    renderLineGauge(
+      createLineGauge({
+        ratio: 0.35,
+        label: createSpan('Upload:  '),
+        lineSet: line.NORMAL,
+        gaugeStyle: styleFg(createStyle(), Color.Green),
+      })
+    ),
+    line2
+  );
+
+  frameRenderWidget(
+    frame,
+    renderLineGauge(
+      createLineGauge({
+        ratio: 0.91,
+        label: createSpan('Download:'),
+        lineSet: line.DOUBLE,
+        gaugeStyle: styleFg(createStyle(), Color.Red),
+      })
+    ),
+    line3
+  );
+});
+```
+
+## Animated Progress
+
+```typescript
+import { terminalLoop } from 'terminui';
+
+terminalLoop(
+  terminal,
+  (frame, tick) => {
+    const progress = (tick % 100) / 100;  // 0 to 1
+
+    const gauge = createGauge({
+      ratio: progress,
+      label: createSpan(`${Math.round(progress * 100)}%`),
+      useUnicode: true,
+      gaugeStyle: styleFg(createStyle(), Color.Cyan),
+      block: blockBordered({ titles: [createTitle('Loading...')] }),
+    });
+
+    frameRenderWidget(frame, renderGauge(gauge), frame.area);
+  },
+  { maxFrames: 100 }
+);
+```
+
+<Note>
+Gauges automatically handle partial fills using unicode eighths (█▉▊▋▌▍▎▏) for smooth rendering. The fill is calculated at 8x resolution and mapped to the appropriate block character.
+</Note>
+
+## Type Reference
+
+```typescript
+// From src/widgets/gauge.ts
+function createGauge(overrides?: Partial<GaugeConfig>): GaugeConfig;
+
+function gaugePercent(
+  percent: number,
+  overrides?: Partial<Omit<GaugeConfig, 'ratio'>>
+): GaugeConfig;
+
+function renderGauge(config: GaugeConfig): WidgetRenderer;
+
+function createLineGauge(overrides?: Partial<LineGaugeConfig>): LineGaugeConfig;
+
+function renderLineGauge(config: LineGaugeConfig): WidgetRenderer;
+```

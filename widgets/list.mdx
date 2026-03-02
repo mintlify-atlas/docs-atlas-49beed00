@@ -1,0 +1,331 @@
+---
+title: List
+description: Vertical scrollable list widget with selection
+---
+
+The **List** widget displays a vertical list of items with support for selection highlighting, scrolling, and custom styling. It's a **stateful widget** that tracks the selected item and scroll offset.
+
+## Visual Example
+
+```
+┌Menu──────────────────────────────────────────────────┐
+│ ▶ Item 1                                             │
+│   Item 2                                             │
+│   Item 3                                             │
+│   Item 4                                             │
+│   Item 5                                             │
+└──────────────────────────────────────────────────────┘
+```
+
+## Basic Usage
+
+```typescript
+import {
+  createList,
+  createListState,
+  renderStatefulList,
+  blockBordered,
+  createTitle,
+  styleFg,
+  createStyle,
+  Color,
+} from 'terminui';
+
+const list = createList(['Item 1', 'Item 2', 'Item 3'], {
+  block: blockBordered({ titles: [createTitle('Menu')] }),
+  highlightStyle: styleFg(createStyle(), Color.Yellow),
+  highlightSymbol: '▶ ',
+});
+
+const state = createListState(0); // selected index = 0
+frameRenderStatefulWidget(frame, renderStatefulList(list), area, state);
+
+// Navigate: state.selected = 1;
+```
+
+## State Management
+
+The List widget uses `ListState` to track selection and scroll offset:
+
+```typescript
+interface ListState {
+  offset: number;         // Scroll offset (auto-managed)
+  selected?: number;      // Currently selected item index
+}
+
+const state = createListState(0);  // Start with first item selected
+const noSelection = createListState();  // No initial selection
+```
+
+### Updating Selection
+
+```typescript
+// Navigate down
+if (state.selected !== undefined && state.selected < items.length - 1) {
+  state.selected += 1;
+}
+
+// Navigate up
+if (state.selected !== undefined && state.selected > 0) {
+  state.selected -= 1;
+}
+
+// Clear selection
+state.selected = undefined;
+```
+
+<Note>
+The `offset` field is automatically managed by the widget to keep the selected item visible. You don't need to update it manually.
+</Note>
+
+## Configuration Options
+
+### ListConfig
+
+```typescript
+interface ListConfig {
+  readonly items: readonly ListItem[];
+  readonly block?: BlockConfig;
+  readonly style: Style;
+  readonly highlightStyle: Style;
+  readonly highlightSymbol?: string;
+  readonly repeatHighlightSymbol: boolean;
+  readonly direction: 'topToBottom' | 'bottomToTop';
+  readonly highlightSpacing: 'always' | 'whenSelected' | 'never';
+}
+```
+
+### ListItem
+
+Each list item can have custom content and styling:
+
+```typescript
+interface ListItem {
+  readonly content: Text;
+  readonly style: Style;
+}
+
+import { createListItem, rawText } from 'terminui';
+
+const item = createListItem('Simple text');
+
+// With custom style
+const styledItem = createListItem(
+  'Styled item',
+  styleFg(createStyle(), Color.Green)
+);
+
+// With rich text
+const richItem = createListItem(
+  rawText('Multi\nLine\nItem')
+);
+```
+
+## Highlight Symbol
+
+Customize the selection indicator:
+
+```typescript
+// Arrow indicator (default spacing: whenSelected)
+const list1 = createList(items, {
+  highlightSymbol: '▶ ',
+});
+
+// Custom indicator
+const list2 = createList(items, {
+  highlightSymbol: '» ',
+  highlightStyle: styleFg(createStyle(), Color.Cyan),
+});
+
+// No indicator, just highlight the row
+const list3 = createList(items, {
+  highlightSpacing: 'never',
+  highlightStyle: styleBg(createStyle(), Color.Blue),
+});
+```
+
+### Repeat Highlight Symbol
+
+For multi-line items, control whether the symbol repeats:
+
+```typescript
+const list = createList(['Item 1\nLine 2', 'Item 2'], {
+  highlightSymbol: '▶ ',
+  repeatHighlightSymbol: true,  // Symbol on every line of selected item
+});
+```
+
+## Highlight Spacing
+
+Control when spacing is reserved for the highlight symbol:
+
+```typescript
+type HighlightSpacing = 'always' | 'whenSelected' | 'never';
+
+// Always reserve space (default)
+const list1 = createList(items, {
+  highlightSpacing: 'always',  // All items indented
+});
+
+// Only when an item is selected
+const list2 = createList(items, {
+  highlightSpacing: 'whenSelected',  // Indent only if selection exists
+});
+
+// Never reserve space
+const list3 = createList(items, {
+  highlightSpacing: 'never',  // No indentation
+});
+```
+
+## List Direction
+
+Control the rendering order:
+
+```typescript
+// Top to bottom (default)
+const topDown = createList(items, {
+  direction: 'topToBottom',
+});
+
+// Bottom to top
+const bottomUp = createList(items, {
+  direction: 'bottomToTop',
+});
+```
+
+## Automatic Scrolling
+
+The List widget automatically scrolls to keep the selected item visible:
+
+```typescript
+const state = createListState(0);
+
+// When you update the selection, the list auto-scrolls
+state.selected = 50;  // Scrolls to show item 50
+```
+
+The `state.offset` field is updated automatically by the widget during rendering.
+
+## Stateless Rendering
+
+You can also render a list without state (no selection):
+
+```typescript
+import { renderList } from 'terminui';
+
+const list = createList(['Item 1', 'Item 2', 'Item 3']);
+
+// Render without state (no selection highlight)
+frameRenderWidget(frame, renderList(list), area);
+```
+
+## Complete Example
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderStatefulWidget,
+  createList,
+  createListState,
+  renderStatefulList,
+  blockBordered,
+  createTitle,
+  styleFg,
+  styleBg,
+  createStyle,
+  Color,
+} from 'terminui';
+
+const state = createTestBackendState(60, 12);
+const terminal = createTerminal(createTestBackend(state));
+
+const items = [
+  'Dashboard',
+  'Users',
+  'Settings',
+  'Reports',
+  'Analytics',
+  'Help',
+  'Logout',
+];
+
+const listState = createListState(0);  // Start at first item
+
+terminalDraw(terminal, (frame) => {
+  const list = createList(items, {
+    block: blockBordered({
+      titles: [createTitle('Main Menu')],
+      borderType: 'rounded',
+    }),
+    highlightSymbol: '▶ ',
+    highlightStyle: styleFg(
+      styleBg(createStyle(), Color.Blue),
+      Color.White
+    ),
+    highlightSpacing: 'always',
+  });
+
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulList(list),
+    frame.area,
+    listState
+  );
+});
+```
+
+## Interactive Example
+
+```typescript
+import { terminalLoop } from 'terminui';
+
+const items = ['Option A', 'Option B', 'Option C', 'Option D'];
+const listState = createListState(0);
+
+terminalLoop(
+  terminal,
+  (frame, tick) => {
+    const list = createList(items, {
+      block: blockBordered({ titles: [createTitle('Select Option')] }),
+      highlightSymbol: '» ',
+      highlightStyle: styleFg(createStyle(), Color.Yellow),
+    });
+
+    frameRenderStatefulWidget(frame, renderStatefulList(list), frame.area, listState);
+  },
+  { maxFrames: 100 }
+);
+
+// Handle key input (pseudo-code)
+// onKeyDown('ArrowDown'): listState.selected = Math.min(items.length - 1, (listState.selected ?? 0) + 1)
+// onKeyUp('ArrowUp'): listState.selected = Math.max(0, (listState.selected ?? 0) - 1)
+```
+
+<Note>
+The List widget is stateful and requires `frameRenderStatefulWidget` for rendering with selection. Use `frameRenderWidget` with `renderList` for stateless rendering without selection.
+</Note>
+
+## Type Reference
+
+```typescript
+// From src/widgets/list.ts
+function createList(
+  items: readonly (string | ListItem)[],
+  overrides?: Partial<Omit<ListConfig, 'items'>>
+): ListConfig;
+
+function createListState(selected?: number): ListState;
+
+function renderList(config: ListConfig): WidgetRenderer;
+
+function renderStatefulList(config: ListConfig): StatefulWidgetRenderer<ListState>;
+
+function createListItem(content: string | Text, style?: Style): ListItem;
+
+type ListDirection = 'topToBottom' | 'bottomToTop';
+type HighlightSpacing = 'always' | 'whenSelected' | 'never';
+```

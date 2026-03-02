@@ -1,0 +1,335 @@
+---
+title: Style API
+description: Color and styling functions
+---
+
+## Overview
+
+The Style API provides functions for creating and manipulating colors, styles, and text modifiers for terminal display.
+
+## Types
+
+### Color
+
+```typescript
+type Color = NamedColor | IndexedColor | RgbColor;
+```
+
+### NamedColor
+
+```typescript
+interface NamedColor {
+  readonly type: NamedColorType;
+}
+
+type NamedColorType =
+  | 'reset'
+  | 'black'
+  | 'red'
+  | 'green'
+  | 'yellow'
+  | 'blue'
+  | 'magenta'
+  | 'cyan'
+  | 'gray'
+  | 'dark-gray'
+  | 'light-red'
+  | 'light-green'
+  | 'light-yellow'
+  | 'light-blue'
+  | 'light-magenta'
+  | 'light-cyan'
+  | 'white';
+```
+
+### IndexedColor
+
+```typescript
+interface IndexedColor {
+  readonly type: 'indexed';
+  readonly index: number;
+}
+```
+
+### RgbColor
+
+```typescript
+interface RgbColor {
+  readonly type: 'rgb';
+  readonly r: number;
+  readonly g: number;
+  readonly b: number;
+}
+```
+
+### Style
+
+```typescript
+interface Style {
+  readonly fg?: Color;
+  readonly bg?: Color;
+  readonly underlineColor?: Color;
+  readonly addModifier: number;
+  readonly subModifier: number;
+}
+```
+
+## Color Constants
+
+### Color
+
+Predefined named colors.
+
+```typescript
+const Color = {
+  Reset: { type: 'reset' },
+  Black: { type: 'black' },
+  Red: { type: 'red' },
+  Green: { type: 'green' },
+  Yellow: { type: 'yellow' },
+  Blue: { type: 'blue' },
+  Magenta: { type: 'magenta' },
+  Cyan: { type: 'cyan' },
+  Gray: { type: 'gray' },
+  DarkGray: { type: 'dark-gray' },
+  LightRed: { type: 'light-red' },
+  LightGreen: { type: 'light-green' },
+  LightYellow: { type: 'light-yellow' },
+  LightBlue: { type: 'light-blue' },
+  LightMagenta: { type: 'light-magenta' },
+  LightCyan: { type: 'light-cyan' },
+  White: { type: 'white' },
+};
+```
+
+**Example:**
+
+```typescript
+import { Color } from 'terminui';
+
+const style = createStyle({ fg: Color.Red, bg: Color.Black });
+```
+
+---
+
+## Color Functions
+
+### indexedColor
+
+Creates an indexed color (0-255).
+
+```typescript
+const indexedColor = (index: number): Color
+```
+
+<ParamField path="index" type="number" required>
+  The color index (0-255)
+</ParamField>
+
+**Returns:** An `IndexedColor`
+
+**Throws:** Error if index is out of range
+
+---
+
+### rgbColor
+
+Creates an RGB color.
+
+```typescript
+const rgbColor = (r: number, g: number, b: number): Color
+```
+
+<ParamField path="r" type="number" required>
+  Red component (0-255)
+</ParamField>
+
+<ParamField path="g" type="number" required>
+  Green component (0-255)
+</ParamField>
+
+<ParamField path="b" type="number" required>
+  Blue component (0-255)
+</ParamField>
+
+**Returns:** An `RgbColor`
+
+**Throws:** Error if any component is out of range
+
+---
+
+## Modifier Constants
+
+### Modifier
+
+Text style modifiers as bitflags.
+
+```typescript
+const Modifier = {
+  NONE: 0,
+  BOLD: 1,
+  DIM: 2,
+  ITALIC: 4,
+  UNDERLINED: 8,
+  SLOW_BLINK: 16,
+  RAPID_BLINK: 32,
+  REVERSED: 64,
+  HIDDEN: 128,
+  CROSSED_OUT: 256,
+  DOUBLE_UNDERLINED: 512,
+  OVERLINED: 1024,
+  ALL: /* combination of all flags */,
+  
+  // Utility functions
+  contains: (flags: number, flag: number): boolean,
+  add: (flags: number, flag: number): number,
+  remove: (flags: number, flag: number): number,
+  union: (a: number, b: number): number,
+};
+```
+
+**Example:**
+
+```typescript
+import { Modifier, styleAddModifier } from 'terminui';
+
+let style = createStyle();
+style = styleAddModifier(style, Modifier.BOLD | Modifier.UNDERLINED);
+```
+
+---
+
+## Style Functions
+
+### createStyle
+
+Creates a new style with optional property overrides.
+
+```typescript
+const createStyle = (overrides?: Partial<Style>): Style
+```
+
+<ParamField path="overrides" type="Partial<Style>">
+  Optional style properties
+  - `fg`: Foreground color
+  - `bg`: Background color
+  - `underlineColor`: Underline color
+  - `addModifier`: Modifiers to add (bitflags)
+  - `subModifier`: Modifiers to remove (bitflags)
+</ParamField>
+
+**Returns:** A new `Style`
+
+---
+
+### styleFg
+
+Sets the foreground color of a style.
+
+```typescript
+const styleFg = (style: Style, color: Color): Style
+```
+
+<ParamField path="style" type="Style" required>
+  The style to modify
+</ParamField>
+
+<ParamField path="color" type="Color" required>
+  The foreground color
+</ParamField>
+
+**Returns:** A new `Style` with the updated foreground color
+
+---
+
+### styleBg
+
+Sets the background color of a style.
+
+```typescript
+const styleBg = (style: Style, color: Color): Style
+```
+
+<ParamField path="style" type="Style" required>
+  The style to modify
+</ParamField>
+
+<ParamField path="color" type="Color" required>
+  The background color
+</ParamField>
+
+**Returns:** A new `Style` with the updated background color
+
+---
+
+### styleAddModifier
+
+Adds text modifiers to a style.
+
+```typescript
+const styleAddModifier = (style: Style, modifier: number): Style
+```
+
+<ParamField path="style" type="Style" required>
+  The style to modify
+</ParamField>
+
+<ParamField path="modifier" type="number" required>
+  The modifier bitflags to add
+</ParamField>
+
+**Returns:** A new `Style` with the added modifiers
+
+---
+
+### styleSubModifier
+
+Removes text modifiers from a style.
+
+```typescript
+const styleSubModifier = (style: Style, modifier: number): Style
+```
+
+<ParamField path="style" type="Style" required>
+  The style to modify
+</ParamField>
+
+<ParamField path="modifier" type="number" required>
+  The modifier bitflags to remove
+</ParamField>
+
+**Returns:** A new `Style` with the removed modifiers
+
+---
+
+### patchStyle
+
+Merges two styles together.
+
+```typescript
+const patchStyle = (base: Style, patch: Style): Style
+```
+
+<ParamField path="base" type="Style" required>
+  The base style
+</ParamField>
+
+<ParamField path="patch" type="Style" required>
+  The style to merge in
+</ParamField>
+
+**Returns:** A new `Style` combining both styles
+
+**Description:** The patch style's properties override the base style's properties. Modifiers are combined using bitwise operations.
+
+---
+
+### resetStyle
+
+Creates a style that resets all styling.
+
+```typescript
+const resetStyle = (): Style
+```
+
+**Returns:** A `Style` that resets foreground, background, and underline colors

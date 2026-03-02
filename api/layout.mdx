@@ -1,0 +1,687 @@
+---
+title: Layout API
+description: Layout, constraint, and rectangle functions
+---
+
+## Overview
+
+The Layout API provides functions for managing terminal layouts, defining size constraints, and working with rectangular areas.
+
+## Types
+
+### Position
+
+```typescript
+interface Position {
+  readonly x: number;
+  readonly y: number;
+}
+```
+
+### Size
+
+```typescript
+interface Size {
+  readonly width: number;
+  readonly height: number;
+}
+```
+
+### Rect
+
+```typescript
+interface Rect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+```
+
+### Margin
+
+```typescript
+interface Margin {
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly left: number;
+}
+```
+
+### Layout
+
+```typescript
+interface Layout {
+  readonly direction: Direction;
+  readonly constraints: readonly Constraint[];
+  readonly margin: Margin;
+  readonly spacing: Spacing;
+}
+```
+
+### Direction
+
+```typescript
+type Direction = 'horizontal' | 'vertical';
+```
+
+### Alignment
+
+```typescript
+type Alignment = 'left' | 'center' | 'right';
+```
+
+## Constraint Types
+
+### MinConstraint
+
+```typescript
+interface MinConstraint {
+  readonly type: 'min';
+  readonly value: number;
+}
+```
+
+### MaxConstraint
+
+```typescript
+interface MaxConstraint {
+  readonly type: 'max';
+  readonly value: number;
+}
+```
+
+### LengthConstraint
+
+```typescript
+interface LengthConstraint {
+  readonly type: 'length';
+  readonly value: number;
+}
+```
+
+### PercentageConstraint
+
+```typescript
+interface PercentageConstraint {
+  readonly type: 'percentage';
+  readonly value: number;
+}
+```
+
+### RatioConstraint
+
+```typescript
+interface RatioConstraint {
+  readonly type: 'ratio';
+  readonly numerator: number;
+  readonly denominator: number;
+}
+```
+
+### FillConstraint
+
+```typescript
+interface FillConstraint {
+  readonly type: 'fill';
+  readonly value: number;
+}
+```
+
+### Constraint
+
+```typescript
+type Constraint =
+  | MinConstraint
+  | MaxConstraint
+  | LengthConstraint
+  | PercentageConstraint
+  | RatioConstraint
+  | FillConstraint;
+```
+
+## Position Functions
+
+### createPosition
+
+Creates a position with x and y coordinates.
+
+```typescript
+const createPosition = (x: number, y: number): Position
+```
+
+<ParamField path="x" type="number" required>
+  The x coordinate
+</ParamField>
+
+<ParamField path="y" type="number" required>
+  The y coordinate
+</ParamField>
+
+**Returns:** A new `Position`
+
+---
+
+## Size Functions
+
+### createSize
+
+Creates a size with width and height.
+
+```typescript
+const createSize = (width: number, height: number): Size
+```
+
+<ParamField path="width" type="number" required>
+  The width
+</ParamField>
+
+<ParamField path="height" type="number" required>
+  The height
+</ParamField>
+
+**Returns:** A new `Size`
+
+---
+
+## Margin Functions
+
+### createMargin
+
+Creates a margin with vertical and horizontal values.
+
+```typescript
+const createMargin = (vertical: number, horizontal: number): Margin
+```
+
+<ParamField path="vertical" type="number" required>
+  The top and bottom margin
+</ParamField>
+
+<ParamField path="horizontal" type="number" required>
+  The left and right margin
+</ParamField>
+
+**Returns:** A new `Margin`
+
+---
+
+### uniformMargin
+
+Creates a margin with the same value on all sides.
+
+```typescript
+const uniformMargin = (value: number): Margin
+```
+
+<ParamField path="value" type="number" required>
+  The margin value for all sides
+</ParamField>
+
+**Returns:** A new `Margin`
+
+---
+
+### noMargin
+
+Creates a margin with zero on all sides.
+
+```typescript
+const noMargin = (): Margin
+```
+
+**Returns:** A `Margin` with all values set to 0
+
+---
+
+## Rect Functions
+
+### createRect
+
+Creates a rectangle with the specified position and dimensions.
+
+```typescript
+const createRect = (
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): Rect
+```
+
+<ParamField path="x" type="number" required>
+  The x coordinate
+</ParamField>
+
+<ParamField path="y" type="number" required>
+  The y coordinate
+</ParamField>
+
+<ParamField path="width" type="number" required>
+  The width
+</ParamField>
+
+<ParamField path="height" type="number" required>
+  The height
+</ParamField>
+
+**Returns:** A new `Rect`
+
+---
+
+### rectArea
+
+Calculates the area of a rectangle.
+
+```typescript
+const rectArea = (rect: Rect): number
+```
+
+<ParamField path="rect" type="Rect" required>
+  The rectangle
+</ParamField>
+
+**Returns:** The area (width × height)
+
+---
+
+### rectIsEmpty
+
+Checks if a rectangle is empty (width or height is 0).
+
+```typescript
+const rectIsEmpty = (rect: Rect): boolean
+```
+
+<ParamField path="rect" type="Rect" required>
+  The rectangle to check
+</ParamField>
+
+**Returns:** `true` if empty, `false` otherwise
+
+---
+
+### rectLeft
+
+Gets the left edge x coordinate.
+
+```typescript
+const rectLeft = (rect: Rect): number
+```
+
+<ParamField path="rect" type="Rect" required>
+  The rectangle
+</ParamField>
+
+**Returns:** The x coordinate
+
+---
+
+### rectRight
+
+Gets the right edge x coordinate.
+
+```typescript
+const rectRight = (rect: Rect): number
+```
+
+<ParamField path="rect" type="Rect" required>
+  The rectangle
+</ParamField>
+
+**Returns:** The x + width coordinate
+
+---
+
+### rectTop
+
+Gets the top edge y coordinate.
+
+```typescript
+const rectTop = (rect: Rect): number
+```
+
+<ParamField path="rect" type="Rect" required>
+  The rectangle
+</ParamField>
+
+**Returns:** The y coordinate
+
+---
+
+### rectBottom
+
+Gets the bottom edge y coordinate.
+
+```typescript
+const rectBottom = (rect: Rect): number
+```
+
+<ParamField path="rect" type="Rect" required>
+  The rectangle
+</ParamField>
+
+**Returns:** The y + height coordinate
+
+---
+
+### rectContains
+
+Checks if a position is inside the rectangle.
+
+```typescript
+const rectContains = (rect: Rect, pos: Position): boolean
+```
+
+<ParamField path="rect" type="Rect" required>
+  The rectangle
+</ParamField>
+
+<ParamField path="pos" type="Position" required>
+  The position to check
+</ParamField>
+
+**Returns:** `true` if the position is inside, `false` otherwise
+
+---
+
+### rectInner
+
+Calculates the inner rectangle after applying margin.
+
+```typescript
+const rectInner = (rect: Rect, margin: Margin): Rect
+```
+
+<ParamField path="rect" type="Rect" required>
+  The outer rectangle
+</ParamField>
+
+<ParamField path="margin" type="Margin" required>
+  The margin to apply
+</ParamField>
+
+**Returns:** The inner `Rect`
+
+---
+
+### rectOuter
+
+Calculates the outer rectangle by expanding with margin.
+
+```typescript
+const rectOuter = (rect: Rect, margin: Margin): Rect
+```
+
+<ParamField path="rect" type="Rect" required>
+  The inner rectangle
+</ParamField>
+
+<ParamField path="margin" type="Margin" required>
+  The margin to expand by
+</ParamField>
+
+**Returns:** The outer `Rect`
+
+---
+
+### rectIntersection
+
+Calculates the intersection of two rectangles.
+
+```typescript
+const rectIntersection = (a: Rect, b: Rect): Rect
+```
+
+<ParamField path="a" type="Rect" required>
+  The first rectangle
+</ParamField>
+
+<ParamField path="b" type="Rect" required>
+  The second rectangle
+</ParamField>
+
+**Returns:** The intersection `Rect`, or `EMPTY_RECT` if they don't intersect
+
+---
+
+### rectUnion
+
+Calculates the union of two rectangles.
+
+```typescript
+const rectUnion = (a: Rect, b: Rect): Rect
+```
+
+<ParamField path="a" type="Rect" required>
+  The first rectangle
+</ParamField>
+
+<ParamField path="b" type="Rect" required>
+  The second rectangle
+</ParamField>
+
+**Returns:** The union `Rect` containing both rectangles
+
+---
+
+### rectRows
+
+Splits a rectangle into rows.
+
+```typescript
+const rectRows = (rect: Rect): readonly Rect[]
+```
+
+<ParamField path="rect" type="Rect" required>
+  The rectangle to split
+</ParamField>
+
+**Returns:** An array of `Rect` objects, one per row
+
+---
+
+### rectColumns
+
+Splits a rectangle into columns.
+
+```typescript
+const rectColumns = (rect: Rect): readonly Rect[]
+```
+
+<ParamField path="rect" type="Rect" required>
+  The rectangle to split
+</ParamField>
+
+**Returns:** An array of `Rect` objects, one per column
+
+---
+
+### rectPositions
+
+Gets all positions within a rectangle.
+
+```typescript
+const rectPositions = (rect: Rect): readonly Position[]
+```
+
+<ParamField path="rect" type="Rect" required>
+  The rectangle
+</ParamField>
+
+**Returns:** An array of all `Position` objects within the rectangle
+
+---
+
+## Constraint Functions
+
+### minConstraint
+
+Creates a minimum size constraint.
+
+```typescript
+const minConstraint = (value: number): Constraint
+```
+
+<ParamField path="value" type="number" required>
+  The minimum size
+</ParamField>
+
+**Returns:** A `MinConstraint`
+
+---
+
+### maxConstraint
+
+Creates a maximum size constraint.
+
+```typescript
+const maxConstraint = (value: number): Constraint
+```
+
+<ParamField path="value" type="number" required>
+  The maximum size
+</ParamField>
+
+**Returns:** A `MaxConstraint`
+
+---
+
+### lengthConstraint
+
+Creates a fixed length constraint.
+
+```typescript
+const lengthConstraint = (value: number): Constraint
+```
+
+<ParamField path="value" type="number" required>
+  The fixed length
+</ParamField>
+
+**Returns:** A `LengthConstraint`
+
+---
+
+### percentageConstraint
+
+Creates a percentage-based constraint.
+
+```typescript
+const percentageConstraint = (value: number): Constraint
+```
+
+<ParamField path="value" type="number" required>
+  The percentage (0-100)
+</ParamField>
+
+**Returns:** A `PercentageConstraint`
+
+---
+
+### ratioConstraint
+
+Creates a ratio-based constraint.
+
+```typescript
+const ratioConstraint = (numerator: number, denominator: number): Constraint
+```
+
+<ParamField path="numerator" type="number" required>
+  The ratio numerator
+</ParamField>
+
+<ParamField path="denominator" type="number" required>
+  The ratio denominator
+</ParamField>
+
+**Returns:** A `RatioConstraint`
+
+---
+
+### fillConstraint
+
+Creates a fill constraint that takes remaining space.
+
+```typescript
+const fillConstraint = (value: number): Constraint
+```
+
+<ParamField path="value" type="number" required>
+  The fill weight (higher values get more space)
+</ParamField>
+
+**Returns:** A `FillConstraint`
+
+---
+
+### applyConstraint
+
+Applies a constraint to a given length.
+
+```typescript
+const applyConstraint = (constraint: Constraint, length: number): number
+```
+
+<ParamField path="constraint" type="Constraint" required>
+  The constraint to apply
+</ParamField>
+
+<ParamField path="length" type="number" required>
+  The available length
+</ParamField>
+
+**Returns:** The calculated size
+
+---
+
+## Layout Functions
+
+### createLayout
+
+Creates a layout with the specified constraints.
+
+```typescript
+const createLayout = (
+  constraints: readonly Constraint[],
+  overrides?: {
+    direction?: Direction;
+    margin?: Margin;
+    spacing?: Spacing;
+  }
+): Layout
+```
+
+<ParamField path="constraints" type="readonly Constraint[]" required>
+  Array of constraints for layout segments
+</ParamField>
+
+<ParamField path="overrides" type="object">
+  Optional layout configuration
+  - `direction`: Layout direction ('horizontal' | 'vertical', default: 'vertical')
+  - `margin`: Margin to apply (default: no margin)
+  - `spacing`: Spacing between segments (default: no spacing)
+</ParamField>
+
+**Returns:** A new `Layout`
+
+---
+
+### splitLayout
+
+Splits a rectangular area according to a layout.
+
+```typescript
+const splitLayout = (layout: Layout, area: Rect): readonly Rect[]
+```
+
+<ParamField path="layout" type="Layout" required>
+  The layout definition
+</ParamField>
+
+<ParamField path="area" type="Rect" required>
+  The area to split
+</ParamField>
+
+**Returns:** An array of `Rect` objects for each layout segment

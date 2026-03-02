@@ -1,0 +1,156 @@
+---
+title: Kitchen Sink
+description: Comprehensive example demonstrating all terminui widgets, layout constraints, styles, and stateful widgets
+---
+
+# Kitchen Sink Demo
+
+The kitchen sink example is a comprehensive demonstration that touches **every built-in widget and major capability** of terminui:
+
+- **All widgets**: Block, Paragraph, List, Table, Gauge, LineGauge, Tabs, Sparkline, BarChart, Scrollbar, Clear
+- **Stateful widgets**: List selection, Table selection, Scrollbar positioning with offset management
+- **Layout constraints**: Length, Percentage, Ratio, Min, Max, Fill, plus overlap spacing
+- **Styles**: Named colors, indexed colors (256-color), RGB colors (24-bit), modifiers, style composition
+- **Text features**: Wrapping, alignment, scrolling, wide character support (CJK)
+- **Terminal APIs**: Clear, resize, cursor controls, multi-frame diff rendering
+
+## What It Demonstrates
+
+This example showcases:
+
+1. **Border gallery** — all 6 border types (`plain`, `rounded`, `double`, `thick`, `quadrantInside`, `quadrantOutside`)
+2. **Stateful list** — interactive list with selection, offset, and highlight symbol
+3. **Stateless reverse list** — bottom-to-top list rendering
+4. **Scrollbars** — all 4 orientations (vertical right/left, horizontal top/bottom) with custom symbols
+5. **Paragraph** — text with wrapping, scrolling, alignment, wide characters, and mixed color styles
+6. **Stateful table** — table with selection, header, footer, styled rows
+7. **Stateless table** — simple table rendering
+8. **Gauges** — unicode and ASCII gauge rendering with labels
+9. **Line gauge** — alternative gauge rendering using line symbols
+10. **Tabs** — tab navigation with selection, dividers, and custom padding
+11. **Sparklines** — left-to-right and right-to-left direction rendering
+12. **Bar charts** — vertical and horizontal grouped bar charts
+13. **Layout constraints** — demonstration of all 6 constraint types with spacing
+14. **Overlap spacing** — overlapping panels with partial borders
+15. **Cursor positioning** — animated cursor movement across frames
+
+## Running the Example
+
+<Steps>
+  <Step title="Run the kitchen sink demo">
+    ```bash
+    npx tsx examples/kitchen-sink.ts
+    ```
+  </Step>
+</Steps>
+
+The demo renders **5 frames** to a 120x40 test backend, demonstrating:
+- Multi-frame rendering with diff-based updates
+- Animated state changes (tab selection, list selection, table selection, scrollbar position)
+- Dynamic data (gauge percentages, sparkline series, bar chart values)
+- Cursor position animation
+
+## Key Code Patterns
+
+### Layout with Multiple Constraints
+
+```typescript
+const constraintChunks = splitLayout(
+  createLayout(
+    [
+      lengthConstraint(10),       // exactly 10 cells
+      percentageConstraint(18),   // 18% of available space
+      ratioConstraint(1, 6),      // 1/6 of available space
+      minConstraint(8),           // at least 8 cells
+      maxConstraint(10),          // at most 10 cells
+      fillConstraint(1),          // fill remaining space
+    ],
+    {
+      direction: 'horizontal',
+      margin: createMargin(0, 1),
+      spacing: { type: 'space', value: 1 },
+    },
+  ),
+  constraintArea,
+);
+```
+
+### Stateful Widget Rendering
+
+```typescript
+const statefulList = createList(queueItems, {
+  block: blockBordered({
+    titles: [createTitle('Stateful list', { alignment: 'center' })],
+    borderType: 'rounded',
+  }),
+  style: styleFg(createStyle(), Color.Gray),
+  highlightStyle: styleBg(
+    styleFg(createStyle(), Color.Black),
+    Color.LightGreen,
+  ),
+  highlightSymbol: '▶ ',
+  repeatHighlightSymbol: true,
+  highlightSpacing: 'always',
+});
+
+const listState = createListState(selected);
+listState.offset = Math.max(0, selected - 2);
+
+frameRenderStatefulWidget(
+  frame,
+  renderStatefulList(statefulList),
+  statefulArea,
+  listState,
+);
+```
+
+<Note>
+  The kitchen sink uses `frameRenderWidget` for stateless widgets and `frameRenderStatefulWidget` for widgets that maintain selection or scroll state.
+</Note>
+
+### Style Composition
+
+```typescript
+const emphasized = styleSubModifier(
+  styleAddModifier(
+    styleFg(createStyle(), rgbColor(255, 145, 51)),
+    Modifier.BOLD | Modifier.ITALIC | Modifier.UNDERLINED,
+  ),
+  Modifier.ITALIC,  // remove italic
+);
+```
+
+<Tip>
+  Use `styleAddModifier` to add modifiers and `styleSubModifier` to remove them. Modifiers are bitflags, so you can combine them with `|`.
+</Tip>
+
+### Multi-Frame Rendering
+
+```typescript
+for (let tick = 0; tick < FRAMES; tick++) {
+  terminalDraw(terminal, (frame) => {
+    renderKitchenSinkFrame(frame, tick);
+  });
+}
+
+console.log(testBackendToString(state));
+```
+
+<Note>
+  The test backend captures all frames and outputs the **final frame** when you call `testBackendToString`. This demonstrates diff-based rendering where only changed cells are updated between frames.
+</Note>
+
+## Screenshot Output
+
+The rendered output is a **120x40** terminal dashboard showing:
+
+- **Top**: Double-bordered header with tabs (6 tabs cycling through selection)
+- **Left column**: Border gallery (6 types), stateful list (7 items with selection), scrollbar showcase (4 orientations)
+- **Middle column**: Paragraph with text styles, stateful table (5 rows with selection), gauge showcase (3 gauges), core API panel
+- **Right column**: Sparklines (left-to-right and right-to-left), vertical bar chart, horizontal bar chart
+- **Bottom**: Status bar with constraint demo (6 types) and overlap spacing demo (3 panels)
+
+The final frame shows:
+- Cursor positioned at bottom-right corner (moving right each frame)
+- All stateful widgets at their final selected/scrolled positions
+- All dynamic values at their final animated state

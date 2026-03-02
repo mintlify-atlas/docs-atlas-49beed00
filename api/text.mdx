@@ -1,0 +1,477 @@
+---
+title: Text API
+description: Span, line, and text manipulation functions
+---
+
+## Overview
+
+The Text API provides functions for creating and manipulating styled text content using spans, lines, and text blocks.
+
+## Types
+
+### Span
+
+```typescript
+interface Span {
+  readonly content: string;
+  readonly style: Style;
+}
+```
+
+### Line
+
+```typescript
+interface Line {
+  readonly spans: readonly Span[];
+  readonly style: Style;
+  readonly alignment?: Alignment;
+}
+```
+
+### Text
+
+```typescript
+interface Text {
+  readonly lines: readonly Line[];
+  readonly style: Style;
+  readonly alignment: Alignment;
+}
+```
+
+## Span Functions
+
+### createSpan
+
+Creates a span with content and optional style.
+
+```typescript
+const createSpan = (content: string, style?: Style): Span
+```
+
+<ParamField path="content" type="string" required>
+  The text content
+</ParamField>
+
+<ParamField path="style" type="Style">
+  Optional style for the span (default: default style)
+</ParamField>
+
+**Returns:** A new `Span`
+
+---
+
+### rawSpan
+
+Creates an unstyled span.
+
+```typescript
+const rawSpan = (content: string): Span
+```
+
+<ParamField path="content" type="string" required>
+  The text content
+</ParamField>
+
+**Returns:** A new `Span` with default styling
+
+---
+
+### styledSpan
+
+Creates a styled span.
+
+```typescript
+const styledSpan = (content: string, style: Style): Span
+```
+
+<ParamField path="content" type="string" required>
+  The text content
+</ParamField>
+
+<ParamField path="style" type="Style" required>
+  The style to apply
+</ParamField>
+
+**Returns:** A new styled `Span`
+
+---
+
+### spanWidth
+
+Calculates the display width of a span.
+
+```typescript
+const spanWidth = (span: Span): number
+```
+
+<ParamField path="span" type="Span" required>
+  The span to measure
+</ParamField>
+
+**Returns:** The display width in terminal columns
+
+---
+
+### spanPatchStyle
+
+Applies a style patch to a span.
+
+```typescript
+const spanPatchStyle = (span: Span, style: Style): Span
+```
+
+<ParamField path="span" type="Span" required>
+  The span to modify
+</ParamField>
+
+<ParamField path="style" type="Style" required>
+  The style to merge
+</ParamField>
+
+**Returns:** A new `Span` with the merged style
+
+---
+
+## Line Functions
+
+### createLine
+
+Creates a line from spans with optional style and alignment.
+
+```typescript
+const createLine = (
+  spans: readonly Span[],
+  overrides?: {
+    readonly style?: Style;
+    readonly alignment?: Alignment;
+  }
+): Line
+```
+
+<ParamField path="spans" type="readonly Span[]" required>
+  Array of spans that make up the line
+</ParamField>
+
+<ParamField path="overrides" type="object">
+  Optional configuration
+  - `style`: Base style for the line
+  - `alignment`: Text alignment ('left' | 'center' | 'right')
+</ParamField>
+
+**Returns:** A new `Line`
+
+---
+
+### rawLine
+
+Creates an unstyled line from a string.
+
+```typescript
+const rawLine = (content: string): Line
+```
+
+<ParamField path="content" type="string" required>
+  The line content
+</ParamField>
+
+**Returns:** A new `Line` with default styling
+
+---
+
+### styledLine
+
+Creates a styled line from a string.
+
+```typescript
+const styledLine = (content: string, style: Style): Line
+```
+
+<ParamField path="content" type="string" required>
+  The line content
+</ParamField>
+
+<ParamField path="style" type="Style" required>
+  The style to apply
+</ParamField>
+
+**Returns:** A new styled `Line`
+
+---
+
+### lineWidth
+
+Calculates the display width of a line.
+
+```typescript
+const lineWidth = (line: Line): number
+```
+
+<ParamField path="line" type="Line" required>
+  The line to measure
+</ParamField>
+
+**Returns:** The total display width of all spans
+
+---
+
+### lineHeight
+
+Gets the height of a line (always 1).
+
+```typescript
+const lineHeight = (): number
+```
+
+**Returns:** `1`
+
+---
+
+### linePatchStyle
+
+Applies a style patch to a line and all its spans.
+
+```typescript
+const linePatchStyle = (line: Line, style: Style): Line
+```
+
+<ParamField path="line" type="Line" required>
+  The line to modify
+</ParamField>
+
+<ParamField path="style" type="Style" required>
+  The style to merge
+</ParamField>
+
+**Returns:** A new `Line` with the merged style
+
+---
+
+### linePushSpan
+
+Appends a span to the end of a line.
+
+```typescript
+const linePushSpan = (line: Line, span: Span): Line
+```
+
+<ParamField path="line" type="Line" required>
+  The line to extend
+</ParamField>
+
+<ParamField path="span" type="Span" required>
+  The span to append
+</ParamField>
+
+**Returns:** A new `Line` with the appended span
+
+---
+
+### lineAlignment
+
+Sets the alignment for a line.
+
+```typescript
+const lineAlignment = (line: Line, alignment: Alignment): Line
+```
+
+<ParamField path="line" type="Line" required>
+  The line to modify
+</ParamField>
+
+<ParamField path="alignment" type="Alignment" required>
+  The alignment ('left' | 'center' | 'right')
+</ParamField>
+
+**Returns:** A new `Line` with the updated alignment
+
+---
+
+## Text Functions
+
+### createText
+
+Creates a text block from lines.
+
+```typescript
+const createText = (
+  lines: readonly Line[],
+  overrides?: {
+    readonly style?: Style;
+    readonly alignment?: Alignment;
+  }
+): Text
+```
+
+<ParamField path="lines" type="readonly Line[]" required>
+  Array of lines that make up the text
+</ParamField>
+
+<ParamField path="overrides" type="object">
+  Optional configuration
+  - `style`: Base style for the text
+  - `alignment`: Default alignment ('left' | 'center' | 'right')
+</ParamField>
+
+**Returns:** A new `Text`
+
+---
+
+### rawText
+
+Creates unstyled text from a string (splits on newlines).
+
+```typescript
+const rawText = (content: string): Text
+```
+
+<ParamField path="content" type="string" required>
+  The text content (may contain newlines)
+</ParamField>
+
+**Returns:** A new `Text` with default styling
+
+---
+
+### styledText
+
+Creates styled text from a string (splits on newlines).
+
+```typescript
+const styledText = (content: string, style: Style): Text
+```
+
+<ParamField path="content" type="string" required>
+  The text content (may contain newlines)
+</ParamField>
+
+<ParamField path="style" type="Style" required>
+  The style to apply to all lines
+</ParamField>
+
+**Returns:** A new styled `Text`
+
+---
+
+### textWidth
+
+Calculates the maximum line width in the text.
+
+```typescript
+const textWidth = (text: Text): number
+```
+
+<ParamField path="text" type="Text" required>
+  The text to measure
+</ParamField>
+
+**Returns:** The width of the widest line
+
+---
+
+### textHeight
+
+Gets the number of lines in the text.
+
+```typescript
+const textHeight = (text: Text): number
+```
+
+<ParamField path="text" type="Text" required>
+  The text to measure
+</ParamField>
+
+**Returns:** The number of lines
+
+---
+
+### textPatchStyle
+
+Applies a style patch to text and all its lines.
+
+```typescript
+const textPatchStyle = (text: Text, style: Style): Text
+```
+
+<ParamField path="text" type="Text" required>
+  The text to modify
+</ParamField>
+
+<ParamField path="style" type="Style" required>
+  The style to merge
+</ParamField>
+
+**Returns:** A new `Text` with the merged style
+
+---
+
+### textPushLine
+
+Appends a line to the end of the text.
+
+```typescript
+const textPushLine = (text: Text, line: Line): Text
+```
+
+<ParamField path="text" type="Text" required>
+  The text to extend
+</ParamField>
+
+<ParamField path="line" type="Line" required>
+  The line to append
+</ParamField>
+
+**Returns:** A new `Text` with the appended line
+
+---
+
+### textPushSpan
+
+Appends a span to the last line of the text.
+
+```typescript
+const textPushSpan = (text: Text, span: Span): Text
+```
+
+<ParamField path="text" type="Text" required>
+  The text to modify
+</ParamField>
+
+<ParamField path="span" type="Span" required>
+  The span to append to the last line
+</ParamField>
+
+**Returns:** A new `Text` with the appended span
+
+---
+
+## Utility Functions
+
+### stringWidth
+
+Calculates the display width of a string.
+
+```typescript
+const stringWidth = (str: string): number
+```
+
+<ParamField path="str" type="string" required>
+  The string to measure
+</ParamField>
+
+**Returns:** The display width in terminal columns (accounting for wide characters)
+
+---
+
+### isWideChar
+
+Checks if a character code is a wide character.
+
+```typescript
+const isWideChar = (code: number): boolean
+```
+
+<ParamField path="code" type="number" required>
+  The character code point
+</ParamField>
+
+**Returns:** `true` if the character is wide (2 columns), `false` otherwise

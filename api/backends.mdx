@@ -1,0 +1,278 @@
+---
+title: Backends
+description: Backend API for terminal I/O abstraction
+---
+
+The Backend interface provides an abstraction layer between terminui's rendering system and the actual terminal I/O. This allows terminui to work with different terminal implementations or test environments.
+
+## Backend interface
+
+The `Backend` interface defines the contract for terminal backends:
+
+```typescript
+interface Backend {
+  size(): Size;
+  draw(content: readonly { readonly x: number; readonly y: number; readonly cell: Cell }[]): void;
+  flush(): void;
+  hideCursor(): void;
+  showCursor(): void;
+  getCursorPosition(): Position;
+  setCursorPosition(pos: Position): void;
+  clear(): void;
+}
+```
+
+### Methods
+
+<ParamField path="size" type="() => Size">
+  Returns the current terminal size (width and height in cells)
+</ParamField>
+
+<ParamField path="draw" type="(content: CellUpdate[]) => void">
+  Draws cells to the terminal buffer. Called with an array of cell updates, each containing `x`, `y`, and `cell`
+</ParamField>
+
+<ParamField path="flush" type="() => void">
+  Flushes any buffered output to the terminal. Called after `draw()` to commit changes
+</ParamField>
+
+<ParamField path="hideCursor" type="() => void">
+  Hides the terminal cursor
+</ParamField>
+
+<ParamField path="showCursor" type="() => void">
+  Shows the terminal cursor
+</ParamField>
+
+<ParamField path="getCursorPosition" type="() => Position">
+  Returns the current cursor position
+</ParamField>
+
+<ParamField path="setCursorPosition" type="(pos: Position) => void">
+  Sets the cursor position to the specified coordinates
+</ParamField>
+
+<ParamField path="clear" type="() => void">
+  Clears the terminal screen
+</ParamField>
+
+## TestBackend
+
+The TestBackend is a memory-based backend for testing and examples. It captures rendered output in a 2D array that can be inspected or converted to a string.
+
+### createTestBackendState
+
+Creates the state object for a TestBackend.
+
+```typescript
+function createTestBackendState(
+  width: number,
+  height: number
+): TestBackendState
+```
+
+<ParamField path="width" type="number" required>
+  Terminal width in cells
+</ParamField>
+
+<ParamField path="height" type="number" required>
+  Terminal height in cells
+</ParamField>
+
+**Returns:** `TestBackendState` - State object containing the buffer, cursor position, and visibility
+
+**Example:**
+
+```typescript
+import { createTestBackendState } from 'terminui';
+
+const state = createTestBackendState(80, 24);
+```
+
+### createTestBackend
+
+Creates a TestBackend from a state object.
+
+```typescript
+function createTestBackend(state: TestBackendState): Backend
+```
+
+<ParamField path="state" type="TestBackendState" required>
+  The state object created by `createTestBackendState`
+</ParamField>
+
+**Returns:** `Backend` - A backend that writes to the in-memory buffer
+
+**Example:**
+
+```typescript
+import { createTestBackendState, createTestBackend, createTerminal } from 'terminui';
+
+const state = createTestBackendState(60, 10);
+const backend = createTestBackend(state);
+const terminal = createTerminal(backend);
+```
+
+### testBackendToString
+
+Converts the TestBackend buffer to a string representation.
+
+```typescript
+function testBackendToString(state: TestBackendState): string
+```
+
+<ParamField path="state" type="TestBackendState" required>
+  The state object containing the rendered output
+</ParamField>
+
+**Returns:** `string` - The rendered output as a string with newlines between rows
+
+**Example:**
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  testBackendToString,
+} from 'terminui';
+
+const state = createTestBackendState(60, 10);
+const backend = createTestBackend(state);
+const terminal = createTerminal(backend);
+
+terminalDraw(terminal, (frame) => {
+  // render widgets
+});
+
+console.log(testBackendToString(state));
+```
+
+### testBackendCellAt
+
+Retrieves a specific cell from the TestBackend buffer.
+
+```typescript
+function testBackendCellAt(
+  state: TestBackendState,
+  x: number,
+  y: number
+): Cell | undefined
+```
+
+<ParamField path="state" type="TestBackendState" required>
+  The state object containing the buffer
+</ParamField>
+
+<ParamField path="x" type="number" required>
+  X coordinate (column)
+</ParamField>
+
+<ParamField path="y" type="number" required>
+  Y coordinate (row)
+</ParamField>
+
+**Returns:** `Cell | undefined` - The cell at the specified position, or `undefined` if out of bounds
+
+**Example:**
+
+```typescript
+import { createTestBackendState, testBackendCellAt } from 'terminui';
+
+const state = createTestBackendState(80, 24);
+// ... render some content ...
+
+const cell = testBackendCellAt(state, 5, 10);
+if (cell) {
+  console.log(cell.symbol); // The character at (5, 10)
+}
+```
+
+## Types
+
+### TestBackendState
+
+```typescript
+interface TestBackendState {
+  width: number;
+  height: number;
+  buffer: Cell[][];
+  cursorPosition: Position;
+  cursorVisible: boolean;
+}
+```
+
+<ResponseField name="width" type="number">
+  Terminal width in cells
+</ResponseField>
+
+<ResponseField name="height" type="number">
+  Terminal height in cells
+</ResponseField>
+
+<ResponseField name="buffer" type="Cell[][]">
+  2D array of cells representing the terminal screen
+</ResponseField>
+
+<ResponseField name="cursorPosition" type="Position">
+  Current cursor position
+</ResponseField>
+
+<ResponseField name="cursorVisible" type="boolean">
+  Whether the cursor is visible
+</ResponseField>
+
+## Custom backends
+
+To create a custom backend (e.g., for Node.js stdout/stderr), implement the `Backend` interface:
+
+```typescript
+import type { Backend } from 'terminui';
+
+const createNodeBackend = (): Backend => ({
+  size: () => ({
+    width: process.stdout.columns || 80,
+    height: process.stdout.rows || 24,
+  }),
+  
+  draw: (content) => {
+    for (const { x, y, cell } of content) {
+      // Move cursor to position and write cell
+      process.stdout.write(`\x1b[${y + 1};${x + 1}H${cell.symbol}`);
+      // Apply ANSI color codes based on cell.style
+    }
+  },
+  
+  flush: () => {
+    // stdout writes are typically auto-flushed
+  },
+  
+  hideCursor: () => {
+    process.stdout.write('\x1b[?25l');
+  },
+  
+  showCursor: () => {
+    process.stdout.write('\x1b[?25h');
+  },
+  
+  getCursorPosition: () => ({ x: 0, y: 0 }),
+  
+  setCursorPosition: (pos) => {
+    process.stdout.write(`\x1b[${pos.y + 1};${pos.x + 1}H`);
+  },
+  
+  clear: () => {
+    process.stdout.write('\x1b[2J\x1b[H');
+  },
+});
+```
+
+<Note>
+  For production use, you'll want to handle ANSI escape sequence generation for colors and modifiers based on the cell's style property.
+</Note>
+
+## See also
+
+- [Terminal API](/api/terminal) - Terminal creation and rendering
+- [Buffer API](/api/buffer) - Cell and buffer management

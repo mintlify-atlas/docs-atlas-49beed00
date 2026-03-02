@@ -1,0 +1,265 @@
+---
+title: Architecture
+description: Understanding terminui's functional architecture and component flow
+---
+
+terminui follows a **pure functional architecture** with zero classes. Everything is built from plain objects and pure functions.
+
+## Component Flow
+
+The data flows through a clean, layered architecture:
+
+```
+Backend → Terminal → Frame → Buffer → Cells
+                       ↑
+                    Widgets (pure render functions)
+                       ↑
+                    Layout (constraint solver)
+```
+
+### Backend
+
+The backend is an interface that handles the actual terminal I/O. It's pluggable, so you can swap between test backends and real terminal backends.
+
+```typescript
+interface Backend {
+  readonly size: () => Size;
+  readonly draw: (
+    content: readonly { readonly x: number; readonly y: number; readonly cell: Cell }[],
+  ) => void;
+  readonly flush: () => void;
+  readonly hideCursor: () => void;
+  readonly showCursor: () => void;
+  readonly getCursorPosition: () => Position;
+  readonly setCursorPosition: (pos: Position) => void;
+  readonly clear: () => void;
+}
+```
+
+From `~/workspace/source/src/core/terminal.ts:9-20`
+
+### Terminal
+
+The terminal manages two buffers for double-buffered rendering and coordinates the rendering cycle.
+
+```typescript
+interface Terminal {
+  readonly backend: Backend;
+  buffers: readonly [Buffer, Buffer];
+  current: number;
+  readonly viewport: Viewport;
+  readonly viewportArea: Rect;
+  hiddenCursor: boolean;
+  frameCount: number;
+}
+```
+
+From `~/workspace/source/src/core/terminal.ts:34-42`
+
+Create a terminal with:
+
+```typescript
+const createTerminal = (backend: Backend, options?: Partial<TerminalOptions>): Terminal
+```
+
+### Frame
+
+A frame represents a single render pass. Widgets render into the frame's buffer.
+
+```typescript
+interface Frame {
+  readonly buffer: Buffer;
+  readonly area: Rect;
+  readonly count: number;
+  cursorPosition?: Position;
+}
+```
+
+From `~/workspace/source/src/core/terminal.ts:45-51`
+
+### Buffer
+
+The buffer is a 2D grid of cells that represents the terminal screen.
+
+```typescript
+interface Buffer {
+  readonly area: Rect;
+  readonly content: Cell[];
+}
+```
+
+From `~/workspace/source/src/core/buffer.ts:83-86`
+
+### Cells
+
+Each cell holds a character and its styling information.
+
+```typescript
+interface Cell {
+  readonly symbol: string;
+  readonly fg: Color;
+  readonly bg: Color;
+  readonly underlineColor?: Color;
+  readonly modifier: number;
+}
+```
+
+From `~/workspace/source/src/core/buffer.ts:7-13`
+
+## Functional Composition
+
+Widgets are **pure functions** that return render functions. This enables powerful composition patterns.
+
+### Widget Renderer Type
+
+```typescript
+type WidgetRenderer = (area: Rect, buf: Buffer) => void;
+```
+
+A widget takes configuration and returns a `WidgetRenderer` — a function that knows how to draw itself into a buffer at a given area.
+
+### Rendering Widgets
+
+Widgets are rendered into a frame during the draw cycle:
+
+```typescript
+const frameRenderWidget = (frame: Frame, renderer: WidgetRenderer, area: Rect): void => {
+  renderer(area, frame.buffer);
+};
+```
+
+From `~/workspace/source/src/core/terminal.ts:152-154`
+
+### Stateful Widgets
+
+Some widgets (like List and Table) maintain state for selection and scrolling:
+
+```typescript
+type StatefulWidgetRenderer<S> = (area: Rect, buf: Buffer, state: S) => void;
+
+const frameRenderStatefulWidget = <S>(
+  frame: Frame,
+  renderer: StatefulWidgetRenderer<S>,
+  area: Rect,
+  state: S,
+): void => {
+  renderer(area, frame.buffer, state);
+};
+```
+
+From `~/workspace/source/src/core/terminal.ts:156-163`
+
+## Rendering Cycle
+
+The `terminalDraw` function orchestrates the entire rendering cycle:
+
+```typescript
+const terminalDraw = (terminal: Terminal, renderFn: (frame: Frame) => void): CompletedFrame => {
+  const currentBuf = terminal.buffers[terminal.current] as Buffer;
+  const frame: Frame = {
+    buffer: currentBuf,
+    area: terminal.viewportArea,
+    count: terminal.frameCount,
+  };
+
+  renderFn(frame);
+
+  const previousIdx = terminal.current === 0 ? 1 : 0;
+  const previousBuf = terminal.buffers[previousIdx] as Buffer;
+  const diff = bufferDiff(previousBuf, currentBuf);
+  terminal.backend.draw(diff);
+  terminal.backend.flush();
+
+  // Handle cursor visibility
+  if (frame.cursorPosition) {
+    terminal.backend.setCursorPosition(frame.cursorPosition);
+    terminal.backend.showCursor();
+    terminal.hiddenCursor = false;
+  } else {
+    terminal.backend.hideCursor();
+    terminal.hiddenCursor = true;
+  }
+
+  // Swap buffers
+  terminal.current = previousIdx;
+  resetBuffer(terminal.buffers[terminal.current] as Buffer);
+
+  terminal.frameCount++;
+
+  return {
+    buffer: currentBuf,
+    area: terminal.viewportArea,
+    count: terminal.frameCount - 1,
+  };
+};
+```
+
+From `~/workspace/source/src/core/terminal.ts:87-123`
+
+<Note>
+The double-buffer swap ensures that widgets always render to a clean buffer while the previous frame remains available for diffing.
+</Note>
+
+## Composition Example
+
+Here's how everything fits together:
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderWidget,
+  createRect,
+  createLayout,
+  lengthConstraint,
+  fillConstraint,
+  splitLayout,
+  blockBordered,
+  createTitle,
+  createParagraph,
+  renderParagraph,
+} from 'terminui';
+
+// 1. Backend
+const state = createTestBackendState(60, 10);
+const backend = createTestBackend(state);
+
+// 2. Terminal
+const terminal = createTerminal(backend);
+
+// 3. Draw cycle
+terminalDraw(terminal, (frame) => {
+  // 4. Layout
+  const layout = createLayout([lengthConstraint(3), fillConstraint(1)]);
+  const [header, body] = splitLayout(layout, frame.area);
+
+  // 5. Widgets
+  const headerWidget = createParagraph('Header', {
+    block: blockBordered({ titles: [createTitle('App')] }),
+  });
+  const bodyWidget = createParagraph('Body content here...');
+
+  // 6. Render into frame buffer
+  frameRenderWidget(frame, renderParagraph(headerWidget), header);
+  frameRenderWidget(frame, renderParagraph(bodyWidget), body);
+});
+```
+
+<Tip>
+Every widget is just a function. You can compose them however you want — no complex inheritance hierarchies or lifecycle methods to worry about.
+</Tip>
+
+## No Classes, No `this`
+
+terminui is built entirely with:
+- **Plain objects** for data structures
+- **Pure functions** for transformations
+- **Immutable patterns** for state updates
+
+This makes the codebase:
+- Easy to test (just functions)
+- Easy to reason about (no hidden state)
+- Easy to extend (compose functions)
+- Type-safe (strict TypeScript throughout)

@@ -1,0 +1,130 @@
+---
+title: "Introduction"
+description: "A fast, functional TypeScript library for building terminal user interfaces"
+---
+
+# terminui
+
+A fast, functional TypeScript library for building terminal user interfaces with pure functions, double-buffered rendering, and a rich component system.
+
+## Why terminui?
+
+terminui brings a **pure functional architecture** to terminal UIs. No classes, no `this`, no mutation—just plain objects in and plain objects out. It's built for developers who want the performance of low-level terminal control with the ergonomics of modern functional programming.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get started with terminui in under 5 minutes
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/terminal">
+    Explore the full API documentation
+  </Card>
+  <Card title="Examples" icon="sparkles" href="/examples/kitchen-sink">
+    Browse working examples and demos
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/ahmadawais/terminui">
+    View source code and contribute
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<AccordionGroup>
+  <Accordion title="Pure Functional Architecture">
+    No classes, no `this`, no mutation. Everything is a pure function that takes plain objects and returns plain objects. Compose widgets however you want—it's just functions all the way down.
+  </Accordion>
+
+  <Accordion title="Double-Buffered Rendering">
+    Only changed cells are flushed to the terminal between frames. The diff-based rendering engine compares the current and previous buffers, sending minimal ANSI escape codes for maximum performance.
+  </Accordion>
+
+  <Accordion title="Rich Layout System">
+    Split any rectangle with powerful constraints: `Length`, `Percentage`, `Ratio`, `Min`, `Max`, and `Fill`. Create complex dashboard layouts with nested horizontal and vertical splits.
+  </Accordion>
+
+  <Accordion title="Full Style System">
+    Support for 16 ANSI colors, 256-color indexed palette, 24-bit RGB true color, and modifiers (bold, italic, underline, dim, blink, reversed, and more).
+  </Accordion>
+
+  <Accordion title="Wide Character Support">
+    CJK and fullwidth characters are measured and rendered correctly. The library properly calculates character widths and handles multi-byte Unicode sequences.
+  </Accordion>
+
+  <Accordion title="10+ Built-in Widgets">
+    Includes Block, Paragraph, List, Table, Gauge, Tabs, Sparkline, BarChart, Scrollbar, and Clear widgets. All widgets are composable and customizable.
+  </Accordion>
+
+  <Accordion title="Stateful Widgets">
+    List and Table support selection state, Scrollbar manages position with offset tracking—all using plain objects you can serialize, persist, or manipulate.
+  </Accordion>
+
+  <Accordion title="JSX API">
+    Optional React-like JSX syntax without a virtual DOM reconciler. JSX is translated directly into the same widget render calls, keeping the performance model intact.
+  </Accordion>
+
+  <Accordion title="TypeScript Strict Mode">
+    Built with `strict: true` and `noUncheckedIndexedAccess: true`. Zero `any` types—complete type safety throughout the entire API.
+  </Accordion>
+
+  <Accordion title="Pluggable Backends">
+    Test backend included for automated testing and snapshots. Bring your own Node.js terminal backend for production alternate-screen apps.
+  </Accordion>
+</AccordionGroup>
+
+## Architecture
+
+terminui follows a clean functional architecture with zero classes:
+
+```
+Backend → Terminal → Frame → Buffer → Cells
+                       ↑
+                    Widgets (pure render functions)
+                       ↑
+                    Layout (constraint solver)
+```
+
+**Everything is a function.** Widgets are functions that take config and return a `WidgetRenderer`—a function `(area: Rect, buf: Buffer) => void`. Compose them however you want.
+
+## Two Ways to Build
+
+### Functional API
+
+Direct, explicit control with pure functions:
+
+```typescript
+import { createParagraph, renderParagraph, blockBordered, createTitle } from 'terminui';
+
+const paragraph = createParagraph('Hello, terminui!', {
+  block: blockBordered({ titles: [createTitle('Greeting')] }),
+});
+
+frameRenderWidget(frame, renderParagraph(paragraph), frame.area);
+```
+
+### JSX API
+
+React-like syntax without the virtual DOM overhead:
+
+```tsx
+/** @jsxImportSource terminui */
+import { terminalDrawJsx, Panel, Label } from 'terminui/jsx';
+
+terminalDrawJsx(
+  terminal,
+  <Panel title="Greeting" p={1}>
+    <Label text="Hello, terminui!" align="center" bold />
+  </Panel>
+);
+```
+
+Both approaches use the same double-buffered rendering engine and produce identical output.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install terminui and set up your project
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Build your first terminal UI in minutes
+  </Card>
+</CardGroup>

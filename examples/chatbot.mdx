@@ -1,0 +1,353 @@
+---
+title: Interactive Chatbot (JSX)
+description: Production-ready interactive chatbot demo using JSX, alternate screen, readline input, and diff-based rendering
+---
+
+# Interactive JSX Chatbot
+
+The JSX chatbot example is a **production-style interactive terminal UI** that demonstrates real-time terminal UX patterns using the JSX API.
+
+<Note>
+  This is the **production reference** for building interactive terminal applications with terminui. It showcases the complete pattern: alternate screen, raw keyboard input, diff-based rendering, and clean shutdown.
+</Note>
+
+## What It Demonstrates
+
+This example showcases **production TUI patterns**:
+
+1. **Alternate screen buffer** — no scrollback spam, clean exit to original terminal state
+2. **Raw keyboard input** — readline keypress events in raw mode, no prompt spam
+3. **Diff-based rendering** — batched ANSI writes with style caching (reduced flicker)
+4. **Event-driven architecture** — keypress → state update → render cycle
+5. **Scrollable transcript** — conversation history with viewport management
+6. **Streaming responses** — token-by-token animation (simulated AI)
+7. **Graceful shutdown** — cleanup handlers for `Ctrl+C`, `Esc`, `SIGINT`, `SIGTERM`
+8. **Modern CLI layout** — multi-panel layout inspired by vim/blessed
+
+## Features
+
+### Interactive Controls
+
+| Key | Action |
+|-----|--------|
+| `Enter` | Send message |
+| `↑` / `↓` | Scroll conversation up/down |
+| `/clear` | Wipe chat history |
+| `/exit` | Quit (same as `Esc`) |
+| `Esc` | Quit cleanly |
+| `Ctrl+C` | Force quit |
+
+### UI Components
+
+- **Top panel** — Mode indicator (NORMAL), scroll status, uptime, connection status
+- **Left sidebar** — Workspace buffers, engine info, keyboard shortcuts
+- **Main panel** — Scrollable conversation transcript with role badges
+- **Bottom panel** — Command input with real-time typing
+
+### Fake AI Responses
+
+The chatbot uses **mock responses** to simulate streaming behavior:
+- Recognizes keywords (`hello`, `regex`, `plan`, `typescript`, `performance`)
+- Streams tokens word-by-word with random delays (20-55ms)
+- Demonstrates real-time UI updates during streaming
+
+<Tip>
+  The fake AI responses are intentionally simple so you can focus on the **terminal UX patterns**. Wire this to a real LLM API and you have a production chatbot.
+</Tip>
+
+## Running the Example
+
+<Steps>
+  <Step title="Run the chatbot">
+    ```bash
+    npx tsx examples/jsx-chatbot.tsx
+    ```
+  </Step>
+
+  <Step title="Interact with the chatbot">
+    - Type a message and press `Enter` to send
+    - Watch the assistant "type" a response token-by-token
+    - Use `↑`/`↓` to scroll through the conversation history
+    - Type `/clear` to reset the chat
+    - Press `Esc` or `Ctrl+C` to exit
+  </Step>
+</Steps>
+
+## Key Code Patterns
+
+### Alternate Screen Setup
+
+```typescript
+const run = async (): Promise<void> => {
+  if (!input.isTTY || !output.isTTY) {
+    output.write('This demo requires an interactive TTY.\n');
+    process.exitCode = 1;
+    return;
+  }
+
+  const backend = createAnsiBackend();
+  const terminal = createTerminal(backend);
+
+  // Enter alternate screen + clear scrollback
+  output.write('\u001B[?1049h');  // alternate screen
+  output.write('\u001B[2J\u001B[3J\u001B[H');  // clear screen + scrollback
+  output.write('\u001B[?25l');  // hide cursor
+
+  // ... main loop ...
+
+  // Exit alternate screen
+  output.write('\u001B[0m\u001B[?25h');  // reset style + show cursor
+  output.write('\u001B[?1049l');  // exit alternate screen
+  output.write('\u001B[2J\u001B[3J\u001B[H');  // clear screen
+};
+```
+
+<Note>
+  The alternate screen buffer (`\u001B[?1049h`) saves the current terminal state and switches to a clean buffer. On exit (`\u001B[?1049l`), the original terminal state is restored — no history pollution.
+</Note>
+
+### Readline Keypress Events
+
+```typescript
+import readline from 'node:readline';
+import { stdin as input, stdout as output } from 'node:process';
+
+readline.emitKeypressEvents(input);
+input.setRawMode(true);
+input.resume();
+
+const onKeypress = (str: string | undefined, key: readline.Key | undefined): void => {
+  if (key?.ctrl && key.name === 'c') {
+    safeCleanup();
+    process.exit(0);
+  }
+  
+  if (key?.name === 'up') {
+    scrollConversation(1);
+    return;
+  }
+  
+  if (key?.name === 'down') {
+    scrollConversation(-1);
+    return;
+  }
+  
+  if (key?.name === 'escape') {
+    safeCleanup();
+    process.exit(0);
+  }
+  
+  if (key?.name === 'return' || key?.name === 'enter') {
+    void submit();
+    return;
+  }
+  
+  if (key?.name === 'backspace') {
+    if (!app.busy && app.input.length > 0) {
+      app.input = app.input.slice(0, -1);
+      requestRender();
+    }
+    return;
+  }
+  
+  // Handle printable characters
+  const printable = (str ?? key?.sequence ?? '').replace(/[\u0000-\u001F\u007F]/g, '');
+  if (printable.length > 0) {
+    app.input += printable;
+    requestRender();
+  }
+};
+
+input.on('keypress', onKeypress);
+```
+
+<Tip>
+  Raw mode (`input.setRawMode(true)`) disables line buffering and echoing, giving you direct access to keypresses. You must handle backspace, arrow keys, and special keys yourself.
+</Tip>
+
+### JSX Layout with Constraints
+
+```typescript
+return (
+  <Column constraints={[lengthConstraint(3), fillConstraint(1), lengthConstraint(7)]} gap={1}>
+    <Panel title="terminui chat" p={1} fg={THEME.accent}>
+      <Row constraints={[lengthConstraint(10), fillConstraint(1), lengthConstraint(24)]}>
+        <Label text=" NORMAL " fg={THEME.success} bold />
+        <Label text={modeText} align="center" fg={THEME.muted} />
+        <Label text={`status ${statusText} · uptime ${uptimeText(app.startedAt)}`} align="right" fg={statusTone} />
+      </Row>
+    </Panel>
+
+    <Row constraints={[lengthConstraint(sideWidth), fillConstraint(1)]} gap={1}>
+      <Column constraints={[fillConstraint(1), lengthConstraint(7)]} gap={1}>
+        <Panel title="workspace" p={1} fg={Color.LightCyan}>
+          <Text text={sidebarText} wrap={{ trim: true }} />
+        </Panel>
+        <Panel title="help" p={1} fg={Color.LightBlue}>
+          <Text text={hotkeysText} wrap={{ trim: true }} />
+        </Panel>
+      </Column>
+
+      <Panel
+        title={`conversation · ${app.messages.length} messages${scrollFromBottom > 0 ? ` · +${scrollFromBottom}` : ''}`}
+        p={1}
+        fg={THEME.accent}
+      >
+        <Text text={transcript} wrap={{ trim: true }} scroll={[scrollY, 0]} />
+      </Panel>
+    </Row>
+
+    <Panel title="command" p={1} fg={THEME.accent}>
+      <Column constraints={[lengthConstraint(1), fillConstraint(1)]}>
+        <Row constraints={[fillConstraint(1), lengthConstraint(20)]}>
+          <Label text="Enter send · ↑/↓ scroll · Esc quit" fg={THEME.muted} />
+          <Label text={`status ${app.status}`} align="right" fg={statusTone} bold />
+        </Row>
+        <Box>
+          <Text text={`${prompt}${visibleInput}`} fg={Color.White} />
+          <Cursor x={cursorX} y={0} />
+        </Box>
+      </Column>
+    </Panel>
+  </Column>
+);
+```
+
+<Note>
+  JSX components translate directly to widget render calls — no virtual DOM, no reconciliation. The double-buffered renderer still applies diff-based updates.
+</Note>
+
+### Streaming Token Animation
+
+```typescript
+const streamTokens = async (
+  target: ChatMessage,
+  reply: string,
+  onToken: () => void,
+): Promise<void> => {
+  const parts = reply.split(/(\s+)/).filter((s) => s.length > 0);
+  for (const part of parts) {
+    target.content += part;
+    onToken();  // trigger re-render
+    await sleep(20 + Math.floor(Math.random() * 35));
+  }
+};
+
+const submit = async (): Promise<void> => {
+  const message = normalizeInput(app.input);
+  app.input = '';
+  
+  app.messages.push({ role: 'user', content: message, at: Date.now() });
+  app.busy = true;
+  requestRender();
+  
+  await sleep(120 + Math.min(600, message.length * 7));
+  
+  const reply: ChatMessage = { role: 'assistant', content: '', at: Date.now() };
+  app.messages.push(reply);
+  
+  const full = fakeAiResponse(message, app.messages.length);
+  await streamTokens(reply, full, () => {
+    requestRender();
+  });
+  
+  app.busy = false;
+  requestRender();
+};
+```
+
+### Graceful Cleanup
+
+```typescript
+const safeCleanup = (): void => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  
+  if (renderTimer !== undefined) {
+    clearTimeout(renderTimer);
+  }
+  if (heartbeatTimer !== undefined) {
+    clearInterval(heartbeatTimer);
+  }
+  
+  output.off('resize', onResize);
+  input.off('keypress', onKeypress);
+  
+  try {
+    input.setRawMode(false);
+  } catch {
+    // ignore
+  }
+  
+  output.write('\u001B[0m\u001B[?25h');  // reset + show cursor
+  output.write('\u001B[?1049l');  // exit alternate screen
+  output.write('\u001B[2J\u001B[3J\u001B[H');  // clear
+};
+
+process.on('exit', () => safeCleanup());
+process.on('SIGTERM', () => {
+  safeCleanup();
+  process.exit(0);
+});
+process.on('SIGINT', () => {
+  safeCleanup();
+  process.exit(0);
+});
+```
+
+<Tip>
+  Always register cleanup handlers for `exit`, `SIGTERM`, and `SIGINT` to restore the terminal to a sane state. Users expect `Ctrl+C` to work cleanly.
+</Tip>
+
+## Why This Is the Production Reference
+
+This example is the **gold standard** for building interactive terminal UIs because it:
+
+1. **Uses alternate screen** — no pollution of terminal scrollback
+2. **Handles raw input correctly** — keypress events with full control
+3. **Batches ANSI writes** — one `stdout.write()` call per frame for minimal I/O
+4. **Manages state properly** — event → state → render cycle, no race conditions
+5. **Cleans up gracefully** — restores terminal state on exit, handles signals
+6. **Supports resize events** — dynamically adapts to terminal size changes
+7. **Uses JSX for layout** — readable, composable UI tree
+8. **Demonstrates real patterns** — scrollable content, streaming updates, loading states
+
+<Note>
+  If you're building an **interactive CLI tool, chat interface, or live dashboard**, start with this example and adapt it to your needs. The patterns here are battle-tested.
+</Note>
+
+## Wiring to a Real LLM
+
+To connect this to a real AI model:
+
+1. Replace `fakeAiResponse()` with your LLM API call (OpenAI, Anthropic, etc.)
+2. Replace `streamTokens()` with a real streaming token reader
+3. Add error handling for API failures
+4. Add token counting and rate limiting
+5. Add system prompts and conversation context management
+
+Example with OpenAI streaming:
+
+```typescript
+import OpenAI from 'openai';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const streamOpenAIResponse = async (
+  messages: ChatMessage[],
+  onToken: (token: string) => void,
+): Promise<void> => {
+  const stream = await openai.chat.completions.create({
+    model: 'gpt-4',
+    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    stream: true,
+  });
+
+  for await (const chunk of stream) {
+    const token = chunk.choices[0]?.delta?.content ?? '';
+    if (token.length > 0) {
+      onToken(token);
+    }
+  }
+};
+```

@@ -1,0 +1,350 @@
+---
+title: Table
+description: Grid data widget with rows, columns, and constraints
+---
+
+The **Table** widget displays tabular data with configurable column widths, headers, footers, and row selection. It's a **stateful widget** that supports scrolling and selection highlighting.
+
+## Visual Example
+
+```
+┌Users─────────────────────────────────────────────────┐
+│ Name       Age  Role                                 │
+│ Alice      42   admin                                │
+│ Bob        37   user                                 │
+│ Charlie    29   user                                 │
+└──────────────────────────────────────────────────────┘
+```
+
+## Basic Usage
+
+```typescript
+import {
+  createTable,
+  createRow,
+  renderTable,
+  lengthConstraint,
+  fillConstraint,
+  blockBordered,
+  createTitle,
+} from 'terminui';
+
+const table = createTable(
+  [
+    createRow(['Alice', '42', 'admin']),
+    createRow(['Bob', '37', 'user']),
+    createRow(['Charlie', '29', 'user']),
+  ],
+  [lengthConstraint(10), lengthConstraint(5), fillConstraint(1)],
+  {
+    header: createRow(['Name', 'Age', 'Role']),
+    block: blockBordered({ titles: [createTitle('Users')] }),
+  }
+);
+
+frameRenderWidget(frame, renderTable(table), area);
+```
+
+## State Management
+
+The Table widget uses `TableState` for row selection and scrolling:
+
+```typescript
+interface TableState {
+  offset: number;         // Scroll offset (auto-managed)
+  selected?: number;      // Currently selected row index
+}
+
+import { createTableState, renderStatefulTable } from 'terminui';
+
+const state = createTableState(0);  // Start with first row selected
+
+// Render with state
+frameRenderStatefulWidget(frame, renderStatefulTable(table), area, state);
+
+// Navigate
+state.selected = 1;
+```
+
+<Note>
+The `offset` field is automatically managed to keep the selected row visible. The header and footer are always displayed and don't scroll.
+</Note>
+
+## Configuration Options
+
+### TableConfig
+
+```typescript
+interface TableConfig {
+  readonly rows: readonly Row[];
+  readonly header?: Row;
+  readonly footer?: Row;
+  readonly widths: readonly Constraint[];
+  readonly columnSpacing: number;
+  readonly block?: BlockConfig;
+  readonly style: Style;
+  readonly highlightStyle: Style;
+  readonly highlightSymbol?: string;
+  readonly highlightSpacing: 'always' | 'whenSelected' | 'never';
+}
+```
+
+### Row
+
+```typescript
+interface Row {
+  readonly cells: readonly TableCell[];
+  readonly height: number;
+  readonly style: Style;
+  readonly topMargin: number;
+  readonly bottomMargin: number;
+}
+
+const row = createRow(['Cell 1', 'Cell 2', 'Cell 3'], {
+  height: 2,           // Multi-line row
+  style: styleFg(createStyle(), Color.Green),
+  bottomMargin: 1,     // Space below row
+});
+```
+
+### TableCell
+
+```typescript
+interface TableCell {
+  readonly content: Text;
+  readonly style: Style;
+}
+
+import { createTableCell, rawText } from 'terminui';
+
+const cell = createTableCell('Simple');
+
+// With custom style
+const styledCell = createTableCell(
+  'Styled',
+  styleFg(createStyle(), Color.Yellow)
+);
+
+// Multi-line cell
+const multiCell = createTableCell(rawText('Line 1\nLine 2'));
+```
+
+## Column Widths
+
+Define column widths using constraints:
+
+```typescript
+import { lengthConstraint, percentageConstraint, fillConstraint } from 'terminui';
+
+const table = createTable(
+  rows,
+  [
+    lengthConstraint(15),      // Exactly 15 columns
+    percentageConstraint(30),  // 30% of available space
+    fillConstraint(1),         // Fill remaining space
+  ],
+  { header }
+);
+```
+
+See the [Layout documentation](/api/layout) for all constraint types.
+
+## Column Spacing
+
+Control spacing between columns:
+
+```typescript
+const table = createTable(rows, widths, {
+  columnSpacing: 2,  // 2 spaces between columns (default: 1)
+});
+```
+
+## Header and Footer
+
+Add static header and footer rows:
+
+```typescript
+const table = createTable(rows, widths, {
+  header: createRow(['Name', 'Age', 'Role'], {
+    style: styleFg(createStyle(), Color.Cyan),
+  }),
+  footer: createRow(['Total', '108', '3 users'], {
+    style: styleFg(createStyle(), Color.Gray),
+  }),
+});
+```
+
+Headers and footers:
+- Don't scroll with the table content
+- Are not selectable
+- Reserve vertical space automatically
+
+## Row Selection
+
+Enable row selection with state:
+
+```typescript
+const table = createTable(rows, widths, {
+  highlightSymbol: '▶ ',
+  highlightStyle: styleFg(
+    styleBg(createStyle(), Color.Blue),
+    Color.White
+  ),
+  highlightSpacing: 'whenSelected',
+});
+
+const state = createTableState(0);
+
+frameRenderStatefulWidget(
+  frame,
+  renderStatefulTable(table),
+  area,
+  state
+);
+```
+
+## Multi-line Rows
+
+Create rows with custom heights:
+
+```typescript
+const rows = [
+  createRow(
+    [
+      createTableCell(rawText('Alice\nSenior Dev')),
+      createTableCell('42'),
+      createTableCell('admin'),
+    ],
+    {
+      height: 2,  // Row takes 2 lines
+    }
+  ),
+];
+```
+
+## Row Margins
+
+Add spacing between rows:
+
+```typescript
+const row = createRow(cells, {
+  topMargin: 1,     // 1 line above
+  bottomMargin: 1,  // 1 line below
+});
+```
+
+## Stateless Rendering
+
+Render without selection:
+
+```typescript
+import { renderTable } from 'terminui';
+
+frameRenderWidget(frame, renderTable(table), area);
+```
+
+## Complete Example
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderStatefulWidget,
+  createTable,
+  createRow,
+  createTableState,
+  renderStatefulTable,
+  blockBordered,
+  createTitle,
+  lengthConstraint,
+  fillConstraint,
+  styleFg,
+  styleBg,
+  styleAddModifier,
+  createStyle,
+  Color,
+  Modifier,
+} from 'terminui';
+
+const state = createTestBackendState(70, 15);
+const terminal = createTerminal(createTestBackend(state));
+
+const tableState = createTableState(0);
+
+terminalDraw(terminal, (frame) => {
+  const table = createTable(
+    [
+      createRow(['Alice Johnson', '42', 'Engineering', 'admin']),
+      createRow(['Bob Smith', '37', 'Marketing', 'user']),
+      createRow(['Charlie Davis', '29', 'Sales', 'user']),
+      createRow(['Diana Prince', '31', 'Engineering', 'user']),
+      createRow(['Eve Adams', '45', 'HR', 'admin']),
+    ],
+    [
+      lengthConstraint(15),  // Name
+      lengthConstraint(5),   // Age
+      lengthConstraint(12),  // Department
+      fillConstraint(1),     // Role
+    ],
+    {
+      header: createRow(['Name', 'Age', 'Department', 'Role'], {
+        style: styleAddModifier(
+          styleFg(createStyle(), Color.Cyan),
+          Modifier.BOLD
+        ),
+      }),
+      footer: createRow(['Total: 5 users', '', '', ''], {
+        style: styleFg(createStyle(), Color.Gray),
+      }),
+      block: blockBordered({
+        titles: [createTitle('User Directory')],
+        borderType: 'rounded',
+      }),
+      highlightSymbol: '▶ ',
+      highlightStyle: styleFg(
+        styleBg(createStyle(), Color.Blue),
+        Color.White
+      ),
+      highlightSpacing: 'always',
+      columnSpacing: 2,
+    }
+  );
+
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulTable(table),
+    frame.area,
+    tableState
+  );
+});
+```
+
+<Note>
+The Table widget shares the `highlightSpacing` type with the List widget. Both support `'always'`, `'whenSelected'`, and `'never'` options.
+</Note>
+
+## Type Reference
+
+```typescript
+// From src/widgets/table.ts
+function createTable(
+  rows: readonly Row[],
+  widths: readonly Constraint[],
+  overrides?: Partial<Omit<TableConfig, 'rows' | 'widths'>>
+): TableConfig;
+
+function createRow(
+  cells: readonly (string | TableCell)[],
+  overrides?: Partial<Omit<Row, 'cells'>>
+): Row;
+
+function createTableCell(content: string | Text, style?: Style): TableCell;
+
+function createTableState(selected?: number): TableState;
+
+function renderTable(config: TableConfig): WidgetRenderer;
+
+function renderStatefulTable(config: TableConfig): StatefulWidgetRenderer<TableState>;
+```

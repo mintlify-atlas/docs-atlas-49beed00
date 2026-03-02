@@ -1,0 +1,383 @@
+---
+title: Buffer API
+description: Buffer and cell manipulation functions
+---
+
+## Overview
+
+The Buffer API provides functions for creating and manipulating terminal buffers and cells. Buffers store the content and styling information for terminal display.
+
+## Types
+
+### Buffer
+
+```typescript
+interface Buffer {
+  readonly area: Rect;
+  readonly content: Cell[];
+}
+```
+
+### Cell
+
+```typescript
+interface Cell {
+  readonly symbol: string;
+  readonly fg: Color;
+  readonly bg: Color;
+  readonly underlineColor?: Color;
+  readonly modifier: number;
+}
+```
+
+### CellDiff
+
+```typescript
+interface CellDiff {
+  readonly x: number;
+  readonly y: number;
+  readonly cell: Cell;
+}
+```
+
+## Cell Functions
+
+### createCell
+
+Creates a new cell with optional property overrides.
+
+```typescript
+const createCell = (overrides?: Partial<Cell>): Cell
+```
+
+<ParamField path="overrides" type="Partial<Cell>">
+  Optional cell properties to override defaults
+  - `symbol`: The character to display (default: ' ')
+  - `fg`: Foreground color (default: Color.Reset)
+  - `bg`: Background color (default: Color.Reset)
+  - `underlineColor`: Underline color (optional)
+  - `modifier`: Style modifiers as bitflags (default: 0)
+</ParamField>
+
+**Returns:** A new `Cell` instance
+
+---
+
+### cellSetSymbol
+
+Sets the symbol (character) for a cell.
+
+```typescript
+const cellSetSymbol = (cell: Cell, symbol: string): Cell
+```
+
+<ParamField path="cell" type="Cell" required>
+  The cell to modify
+</ParamField>
+
+<ParamField path="symbol" type="string" required>
+  The character to set
+</ParamField>
+
+**Returns:** A new `Cell` with the updated symbol
+
+---
+
+### cellSetStyle
+
+Applies a style to a cell.
+
+```typescript
+const cellSetStyle = (cell: Cell, style: Style): Cell
+```
+
+<ParamField path="cell" type="Cell" required>
+  The cell to style
+</ParamField>
+
+<ParamField path="style" type="Style" required>
+  The style to apply
+</ParamField>
+
+**Returns:** A new `Cell` with the applied style
+
+---
+
+### cellReset
+
+Resets a cell to default values.
+
+```typescript
+const cellReset = (cell: Cell): Cell
+```
+
+<ParamField path="cell" type="Cell" required>
+  The cell to reset
+</ParamField>
+
+**Returns:** A new `Cell` with default values
+
+---
+
+### cellWidth
+
+Gets the display width of a cell (1 for normal, 2 for wide characters).
+
+```typescript
+const cellWidth = (cell: Cell): number
+```
+
+<ParamField path="cell" type="Cell" required>
+  The cell to measure
+</ParamField>
+
+**Returns:** The display width (1 or 2)
+
+---
+
+### charWidth
+
+Gets the display width of a character code point.
+
+```typescript
+const charWidth = (code: number): number
+```
+
+<ParamField path="code" type="number" required>
+  The character code point
+</ParamField>
+
+**Returns:** The display width (1 or 2)
+
+---
+
+## Buffer Functions
+
+### createBuffer
+
+Creates a new buffer for the specified area.
+
+```typescript
+const createBuffer = (area: Rect, cell?: Cell): Buffer
+```
+
+<ParamField path="area" type="Rect" required>
+  The rectangular area for the buffer
+</ParamField>
+
+<ParamField path="cell" type="Cell">
+  Optional cell to fill the buffer with (default: blank cell)
+</ParamField>
+
+**Returns:** A new `Buffer` instance
+
+---
+
+### bufferIndex
+
+Calculates the internal array index for coordinates in the buffer.
+
+```typescript
+const bufferIndex = (buffer: Buffer, x: number, y: number): number
+```
+
+<ParamField path="buffer" type="Buffer" required>
+  The buffer to index into
+</ParamField>
+
+<ParamField path="x" type="number" required>
+  The x coordinate
+</ParamField>
+
+<ParamField path="y" type="number" required>
+  The y coordinate
+</ParamField>
+
+**Returns:** The array index
+
+---
+
+### bufferCell
+
+Gets the cell at the specified coordinates.
+
+```typescript
+const bufferCell = (buffer: Buffer, x: number, y: number): Cell | undefined
+```
+
+<ParamField path="buffer" type="Buffer" required>
+  The buffer to read from
+</ParamField>
+
+<ParamField path="x" type="number" required>
+  The x coordinate
+</ParamField>
+
+<ParamField path="y" type="number" required>
+  The y coordinate
+</ParamField>
+
+**Returns:** The cell at the position, or `undefined` if out of bounds
+
+---
+
+### bufferSetCell
+
+Sets a cell at the specified coordinates.
+
+```typescript
+const bufferSetCell = (buffer: Buffer, x: number, y: number, cell: Cell): void
+```
+
+<ParamField path="buffer" type="Buffer" required>
+  The buffer to modify
+</ParamField>
+
+<ParamField path="x" type="number" required>
+  The x coordinate
+</ParamField>
+
+<ParamField path="y" type="number" required>
+  The y coordinate
+</ParamField>
+
+<ParamField path="cell" type="Cell" required>
+  The cell to set
+</ParamField>
+
+---
+
+### bufferSetString
+
+Writes a string to the buffer at the specified position with the given style.
+
+```typescript
+const bufferSetString = (
+  buffer: Buffer,
+  x: number,
+  y: number,
+  str: string,
+  style: Style
+): void
+```
+
+<ParamField path="buffer" type="Buffer" required>
+  The buffer to write to
+</ParamField>
+
+<ParamField path="x" type="number" required>
+  The starting x coordinate
+</ParamField>
+
+<ParamField path="y" type="number" required>
+  The y coordinate
+</ParamField>
+
+<ParamField path="str" type="string" required>
+  The string to write
+</ParamField>
+
+<ParamField path="style" type="Style" required>
+  The style to apply to the text
+</ParamField>
+
+---
+
+### bufferSetStyle
+
+Applies a style to all cells in a rectangular area.
+
+```typescript
+const bufferSetStyle = (buffer: Buffer, area: Rect, style: Style): void
+```
+
+<ParamField path="buffer" type="Buffer" required>
+  The buffer to modify
+</ParamField>
+
+<ParamField path="area" type="Rect" required>
+  The rectangular area to apply the style to
+</ParamField>
+
+<ParamField path="style" type="Style" required>
+  The style to apply
+</ParamField>
+
+---
+
+### bufferSetLine
+
+Writes a styled line to the buffer.
+
+```typescript
+const bufferSetLine = (
+  buffer: Buffer,
+  x: number,
+  y: number,
+  line: Line,
+  maxWidth: number,
+  style: Style
+): void
+```
+
+<ParamField path="buffer" type="Buffer" required>
+  The buffer to write to
+</ParamField>
+
+<ParamField path="x" type="number" required>
+  The starting x coordinate
+</ParamField>
+
+<ParamField path="y" type="number" required>
+  The y coordinate
+</ParamField>
+
+<ParamField path="line" type="Line" required>
+  The line to render
+</ParamField>
+
+<ParamField path="maxWidth" type="number" required>
+  Maximum width for the line
+</ParamField>
+
+<ParamField path="style" type="Style" required>
+  Base style to merge with line styles
+</ParamField>
+
+---
+
+### bufferDiff
+
+Calculates the differences between two buffers.
+
+```typescript
+const bufferDiff = (prev: Buffer, next: Buffer): readonly CellDiff[]
+```
+
+<ParamField path="prev" type="Buffer" required>
+  The previous buffer state
+</ParamField>
+
+<ParamField path="next" type="Buffer" required>
+  The new buffer state
+</ParamField>
+
+**Returns:** An array of cell differences
+
+---
+
+### bufferMerge
+
+Merges the source buffer into the destination buffer.
+
+```typescript
+const bufferMerge = (dest: Buffer, src: Buffer): void
+```
+
+<ParamField path="dest" type="Buffer" required>
+  The destination buffer to merge into
+</ParamField>
+
+<ParamField path="src" type="Buffer" required>
+  The source buffer to merge from
+</ParamField>

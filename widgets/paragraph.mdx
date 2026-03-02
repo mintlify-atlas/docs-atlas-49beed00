@@ -1,0 +1,260 @@
+---
+title: Paragraph
+description: Text display widget with wrapping, alignment, and scrolling
+---
+
+The **Paragraph** widget displays multi-line text with automatic word wrapping, alignment options, and vertical/horizontal scrolling support.
+
+## Visual Example
+
+```
+┌Paragraph─────────────────────────────────────────────┐
+│  Long text that wraps automatically to fit the      │
+│  available width. Supports alignment and scrolling  │
+│  for content larger than the viewport.              │
+└──────────────────────────────────────────────────────┘
+```
+
+## Basic Usage
+
+```typescript
+import { createParagraph, renderParagraph, blockBordered, createTitle } from 'terminui';
+
+const paragraph = createParagraph('Long text that wraps...', {
+  block: blockBordered({ titles: [createTitle('Paragraph')] }),
+  wrap: { trim: true },
+  alignment: 'center',
+  scroll: [2, 0],  // skip first 2 lines
+});
+
+frameRenderWidget(frame, renderParagraph(paragraph), area);
+```
+
+## From README Example
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderWidget,
+  createParagraph,
+  renderParagraph,
+  blockBordered,
+  createTitle,
+} from 'terminui';
+
+const state = createTestBackendState(60, 10);
+const backend = createTestBackend(state);
+const terminal = createTerminal(backend);
+
+terminalDraw(terminal, (frame) => {
+  const paragraph = createParagraph('Hello, terminui!', {
+    block: blockBordered({ titles: [createTitle('Greeting')] }),
+  });
+  frameRenderWidget(frame, renderParagraph(paragraph), frame.area);
+});
+
+console.log(testBackendToString(state));
+```
+
+Output:
+
+```
+┌Greeting──────────────────────────────────────────────┐
+│Hello, terminui!                                      │
+│                                                      │
+│                                                      │
+│                                                      │
+│                                                      │
+│                                                      │
+│                                                      │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
+
+## Configuration Options
+
+### ParagraphConfig
+
+```typescript
+interface ParagraphConfig {
+  readonly text: Text;
+  readonly block?: BlockConfig;
+  readonly style: Style;
+  readonly alignment: 'left' | 'center' | 'right';
+  readonly wrap?: Wrap;
+  readonly scroll: readonly [number, number];  // [vertical, horizontal]
+}
+```
+
+### Wrap Options
+
+```typescript
+interface Wrap {
+  readonly trim: boolean;  // Trim leading/trailing whitespace on wrapped lines
+}
+```
+
+When `wrap` is undefined, text will not wrap and long lines may be truncated.
+
+## Text Alignment
+
+Control horizontal alignment of text:
+
+```typescript
+// Left-aligned (default)
+const left = createParagraph('Text', { alignment: 'left' });
+
+// Centered
+const center = createParagraph('Text', { alignment: 'center' });
+
+// Right-aligned
+const right = createParagraph('Text', { alignment: 'right' });
+```
+
+## Word Wrapping
+
+Enable word wrapping to fit text within the available width:
+
+```typescript
+const wrapped = createParagraph(
+  'This is a very long line of text that will wrap automatically to fit the width.',
+  {
+    wrap: { trim: true },  // Trim whitespace on wrapped lines
+  }
+);
+```
+
+### Wrapping Behavior
+
+- **Without wrap**: Long lines are truncated at the widget boundary
+- **With `wrap: { trim: true }`**: Lines wrap at word boundaries, trimming leading/trailing spaces
+- **With `wrap: { trim: false }`**: Lines wrap at word boundaries, preserving spaces
+- **Mid-word breaking**: If a single word is wider than available space, it breaks mid-word
+
+## Scrolling
+
+Scroll content vertically or horizontally:
+
+```typescript
+const scrolled = createParagraph('Long content...', {
+  scroll: [5, 0],  // Skip first 5 lines, no horizontal scroll
+});
+
+// Horizontal scroll example
+const hScrolled = createParagraph('Very wide content', {
+  scroll: [0, 10],  // Skip first 10 columns
+});
+```
+
+### Scroll Format
+
+```typescript
+scroll: [verticalOffset, horizontalOffset]
+```
+
+- **verticalOffset**: Number of lines to skip from the top
+- **horizontalOffset**: Number of columns to skip from the left
+
+## Rich Text
+
+Use the `Text` type for styled content:
+
+```typescript
+import { createText, createLine, createSpan, styleFg, Color } from 'terminui';
+
+const richText = createText([
+  createLine([
+    createSpan('Warning: ', styleFg(createStyle(), Color.Yellow)),
+    createSpan('This is important!', styleFg(createStyle(), Color.Red)),
+  ]),
+  createLine([createSpan('Normal text here.')]),
+]);
+
+const paragraph = createParagraph(richText, {
+  wrap: { trim: true },
+});
+```
+
+## Styling
+
+Apply base styles to the entire paragraph:
+
+```typescript
+import { styleFg, styleBg, styleAddModifier, Color, Modifier } from 'terminui';
+
+const styledParagraph = createParagraph('Styled text', {
+  style: styleFg(styleBg(createStyle(), Color.Black), Color.Green),
+});
+
+// With modifiers
+const boldParagraph = createParagraph('Bold text', {
+  style: styleAddModifier(createStyle(), Modifier.BOLD),
+});
+```
+
+## Complete Example
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderWidget,
+  createParagraph,
+  renderParagraph,
+  blockBordered,
+  createTitle,
+  uniformPadding,
+  styleFg,
+  createStyle,
+  Color,
+} from 'terminui';
+
+const state = createTestBackendState(60, 15);
+const terminal = createTerminal(createTestBackend(state));
+
+terminalDraw(terminal, (frame) => {
+  const text = `
+terminui is a fast, functional TypeScript library for building terminal user interfaces.
+
+It features pure functional architecture, double-buffered rendering, and a rich layout system with constraint-based splitting.
+
+This paragraph demonstrates automatic word wrapping and alignment.
+  `.trim();
+
+  const paragraph = createParagraph(text, {
+    block: blockBordered({
+      titles: [createTitle('About terminui')],
+      borderType: 'rounded',
+      padding: uniformPadding(1),
+    }),
+    style: styleFg(createStyle(), Color.Cyan),
+    wrap: { trim: true },
+    alignment: 'left',
+  });
+
+  frameRenderWidget(frame, renderParagraph(paragraph), frame.area);
+});
+```
+
+<Note>
+The Paragraph widget automatically handles wide characters (CJK, fullwidth) and measures them correctly for wrapping and alignment.
+</Note>
+
+## Type Reference
+
+```typescript
+// From src/widgets/paragraph.ts
+function createParagraph(
+  text: Text | string,
+  overrides?: Partial<Omit<ParagraphConfig, 'text'>>
+): ParagraphConfig;
+
+function renderParagraph(config: ParagraphConfig): WidgetRenderer;
+
+type Alignment = 'left' | 'center' | 'right';
+```

@@ -1,0 +1,372 @@
+---
+title: Style System
+description: Colors, modifiers, and style composition in terminui
+---
+
+terminui provides a comprehensive **style system** for terminal colors and text modifiers.
+
+## Style Type
+
+```typescript
+interface Style {
+  readonly fg?: Color;
+  readonly bg?: Color;
+  readonly underlineColor?: Color;
+  readonly addModifier: number;
+  readonly subModifier: number;
+}
+```
+
+From `~/workspace/source/src/core/style.ts:118-124`
+
+### Creating Styles
+
+```typescript
+const createStyle = (overrides?: Partial<Style>): Style
+```
+
+From `~/workspace/source/src/core/style.ts:131-139`
+
+**Example:**
+```typescript
+import { createStyle, styleFg, styleBg, Color } from 'terminui';
+
+const style = createStyle();
+const red = styleFg(style, Color.Red);
+const redOnBlack = styleBg(red, Color.Black);
+```
+
+## Colors
+
+Colors are **discriminated unions** supporting three formats:
+
+```typescript
+type Color = NamedColor | IndexedColor | RgbColor;
+```
+
+From `~/workspace/source/src/core/style.ts:37`
+
+### Named Colors (ANSI)
+
+16 standard terminal colors:
+
+```typescript
+interface NamedColor {
+  readonly type: NamedColorType;
+}
+
+type NamedColorType =
+  | 'reset'
+  | 'black'
+  | 'red'
+  | 'green'
+  | 'yellow'
+  | 'blue'
+  | 'magenta'
+  | 'cyan'
+  | 'gray'
+  | 'dark-gray'
+  | 'light-red'
+  | 'light-green'
+  | 'light-yellow'
+  | 'light-blue'
+  | 'light-magenta'
+  | 'light-cyan'
+  | 'white';
+```
+
+From `~/workspace/source/src/core/style.ts:2-23`
+
+**Usage:**
+```typescript
+const Color = {
+  Reset: { type: 'reset' } as const,
+  Black: { type: 'black' } as const,
+  Red: { type: 'red' } as const,
+  Green: { type: 'green' } as const,
+  Yellow: { type: 'yellow' } as const,
+  Blue: { type: 'blue' } as const,
+  Magenta: { type: 'magenta' } as const,
+  Cyan: { type: 'cyan' } as const,
+  Gray: { type: 'gray' } as const,
+  DarkGray: { type: 'dark-gray' } as const,
+  LightRed: { type: 'light-red' } as const,
+  LightGreen: { type: 'light-green' } as const,
+  LightYellow: { type: 'light-yellow' } as const,
+  LightBlue: { type: 'light-blue' } as const,
+  LightMagenta: { type: 'light-magenta' } as const,
+  LightCyan: { type: 'light-cyan' } as const,
+  White: { type: 'white' } as const,
+};
+```
+
+From `~/workspace/source/src/core/style.ts:39-57`
+
+### Indexed Colors (256-color)
+
+256-color palette:
+
+```typescript
+interface IndexedColor {
+  readonly type: 'indexed';
+  readonly index: number;
+}
+
+const indexedColor = (index: number): Color => {
+  if (index < 0 || index > 255) {
+    throw new Error(`indexed color must be 0-255, got ${index}`);
+  }
+  return { type: 'indexed', index };
+};
+```
+
+From `~/workspace/source/src/core/style.ts:25-28` and `~/workspace/source/src/core/style.ts:59-64`
+
+**Example:**
+```typescript
+import { indexedColor } from 'terminui';
+
+const orange = indexedColor(214);
+const purple = indexedColor(141);
+```
+
+### RGB Colors (24-bit)
+
+True color with 16 million colors:
+
+```typescript
+interface RgbColor {
+  readonly type: 'rgb';
+  readonly r: number;
+  readonly g: number;
+  readonly b: number;
+}
+
+const rgbColor = (r: number, g: number, b: number): Color => {
+  if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+    throw new Error(`rgb values must be 0-255, got (${r}, ${g}, ${b})`);
+  }
+  return { type: 'rgb', r, g, b };
+};
+```
+
+From `~/workspace/source/src/core/style.ts:30-35` and `~/workspace/source/src/core/style.ts:66-71`
+
+**Example:**
+```typescript
+import { rgbColor } from 'terminui';
+
+const orange = rgbColor(255, 128, 0);
+const teal = rgbColor(0, 128, 128);
+```
+
+<Note>
+RGB colors require terminal support for 24-bit true color. Most modern terminals support this.
+</Note>
+
+## Modifiers
+
+Text modifiers are bitflags:
+
+```typescript
+const Modifier = {
+  NONE: 0,
+  BOLD: 1,
+  DIM: 2,
+  ITALIC: 4,
+  UNDERLINED: 8,
+  SLOW_BLINK: 16,
+  RAPID_BLINK: 32,
+  REVERSED: 64,
+  HIDDEN: 128,
+  CROSSED_OUT: 256,
+  DOUBLE_UNDERLINED: 512,
+  OVERLINED: 1024,
+  ALL: /* bitwise OR of all flags */,
+  contains: (flags: number, flag: number): boolean => (flags & flag) === flag,
+  add: (flags: number, flag: number): number => flags | flag,
+  remove: (flags: number, flag: number): number => flags & ~flag,
+  union: (a: number, b: number): number => a | b,
+} as const;
+```
+
+From `~/workspace/source/src/core/style.ts:73-115`
+
+### Adding Modifiers
+
+```typescript
+const styleAddModifier = (style: Style, modifier: number): Style => ({
+  ...style,
+  addModifier: style.addModifier | modifier,
+  subModifier: style.subModifier & ~modifier,
+});
+```
+
+From `~/workspace/source/src/core/style.ts:151-155`
+
+**Example:**
+```typescript
+import { createStyle, styleAddModifier, Modifier } from 'terminui';
+
+const bold = styleAddModifier(createStyle(), Modifier.BOLD);
+const boldItalic = styleAddModifier(bold, Modifier.ITALIC);
+```
+
+### Removing Modifiers
+
+```typescript
+const styleSubModifier = (style: Style, modifier: number): Style => ({
+  ...style,
+  addModifier: style.addModifier & ~modifier,
+  subModifier: style.subModifier | modifier,
+});
+```
+
+From `~/workspace/source/src/core/style.ts:157-161`
+
+**Example:**
+```typescript
+import { styleSubModifier, Modifier } from 'terminui';
+
+const notBold = styleSubModifier(boldItalic, Modifier.BOLD);
+```
+
+## Style Composition
+
+The `patchStyle` function merges two styles:
+
+```typescript
+const patchStyle = (base: Style, patch: Style): Style => {
+  const fg = patch.fg ?? base.fg;
+  const bg = patch.bg ?? base.bg;
+  const underlineColor = patch.underlineColor ?? base.underlineColor;
+  const addModifier = (base.addModifier | patch.addModifier) & ~patch.subModifier;
+  const subModifier = (base.subModifier | patch.subModifier) & ~patch.addModifier;
+
+  return {
+    ...(fg !== undefined ? { fg } : {}),
+    ...(bg !== undefined ? { bg } : {}),
+    ...(underlineColor !== undefined ? { underlineColor } : {}),
+    addModifier,
+    subModifier,
+  };
+};
+```
+
+From `~/workspace/source/src/core/style.ts:163-177`
+
+**Example:**
+```typescript
+import { createStyle, styleFg, styleAddModifier, patchStyle, Color, Modifier } from 'terminui';
+
+const bold = styleAddModifier(createStyle(), Modifier.BOLD);
+const redText = styleFg(createStyle(), Color.Red);
+const boldRed = patchStyle(bold, redText);
+```
+
+<Tip>
+`patchStyle` is used internally when rendering styled text. The patch overwrites the base for colors, and merges modifiers.
+</Tip>
+
+## Setting Foreground and Background
+
+```typescript
+const styleFg = (style: Style, color: Color): Style => ({
+  ...style,
+  fg: color,
+});
+
+const styleBg = (style: Style, color: Color): Style => ({
+  ...style,
+  bg: color,
+});
+```
+
+From `~/workspace/source/src/core/style.ts:141-149`
+
+**Example:**
+```typescript
+import { createStyle, styleFg, styleBg, Color } from 'terminui';
+
+const style = createStyle();
+const yellowOnBlue = styleBg(styleFg(style, Color.Yellow), Color.Blue);
+```
+
+## Complete Example
+
+Building a complex style:
+
+```typescript
+import {
+  createStyle,
+  styleFg,
+  styleBg,
+  styleAddModifier,
+  patchStyle,
+  rgbColor,
+  Color,
+  Modifier,
+} from 'terminui';
+
+// Base style: bold
+const bold = styleAddModifier(createStyle(), Modifier.BOLD);
+
+// Warning style: yellow on black
+const warning = styleBg(styleFg(createStyle(), Color.Yellow), Color.Black);
+
+// Merge: bold yellow on black
+const boldWarning = patchStyle(bold, warning);
+
+// Custom RGB color
+const teal = rgbColor(0, 128, 128);
+const tealBold = patchStyle(bold, styleFg(createStyle(), teal));
+
+// Multiple modifiers
+const fancy = styleAddModifier(
+  styleAddModifier(createStyle(), Modifier.BOLD),
+  Modifier.ITALIC,
+);
+```
+
+## Using Styles with Cells
+
+Styles are applied to cells using `cellSetStyle`:
+
+```typescript
+const cellSetStyle = (cell: Cell, style: Style): Cell => {
+  const fg = style.fg ?? cell.fg;
+  const bg = style.bg ?? cell.bg;
+  const underlineColor = style.underlineColor ?? cell.underlineColor;
+  const modifier = (cell.modifier | style.addModifier) & ~style.subModifier;
+
+  return {
+    symbol: cell.symbol,
+    fg,
+    bg,
+    ...(underlineColor !== undefined ? { underlineColor } : {}),
+    modifier,
+  };
+};
+```
+
+From `~/workspace/source/src/core/buffer.ts:34-47`
+
+## Resetting Styles
+
+Reset all styles to defaults:
+
+```typescript
+const resetStyle = (): Style => ({
+  fg: Color.Reset,
+  bg: Color.Reset,
+  underlineColor: Color.Reset,
+  addModifier: 0,
+  subModifier: 0,
+});
+```
+
+From `~/workspace/source/src/core/style.ts:179-185`
+
+<Note>
+Styles are immutable. Every style function returns a new style object rather than modifying the original.
+</Note>

@@ -1,0 +1,291 @@
+---
+title: Weather Dashboard
+description: Live weather dashboard using terminui widgets with real data from Open-Meteo API
+---
+
+# Weather Dashboard
+
+The weather dashboard example renders a **real-time weather dashboard** using terminui widgets and live data from the [Open-Meteo API](https://open-meteo.com) (no API key required).
+
+## What It Demonstrates
+
+This example showcases:
+
+1. **Live data integration** — fetches real weather data from Open-Meteo API
+2. **Interactive TUI** — runs in alternate screen with keyboard controls
+3. **Auto-refresh** — polls weather API on configurable interval
+4. **Responsive layout** — adapts to terminal size changes
+5. **Real-time rendering** — diff-based updates with batched ANSI writes
+6. **Production patterns** — error handling, loading states, retry logic
+
+### Features
+
+- **Current conditions** — temperature, feels like, humidity, precipitation, wind speed/direction
+- **Hourly forecast** — next 8 hours with temperature, rain chance, wind speed
+- **5-day forecast** — daily high/low temperatures and rain probability
+- **24-hour temperature trend** — sparkline visualization
+- **Gauges** — humidity, rain chance, wind speed with color-coded styles
+- **Live status** — refresh countdown, last update time, error messages
+
+## Running the Example
+
+<Steps>
+  <Step title="Run with default city (New York)">
+    ```bash
+    npx tsx examples/weather-dashboard.ts
+    ```
+  </Step>
+
+  <Step title="Run with custom city">
+    ```bash
+    npx tsx examples/weather-dashboard.ts --city "San Francisco"
+    ```
+    
+    Or use positional argument:
+    ```bash
+    npx tsx examples/weather-dashboard.ts London
+    ```
+  </Step>
+
+  <Step title="Run with Fahrenheit units">
+    ```bash
+    npx tsx examples/weather-dashboard.ts --city "New York" --units fahrenheit
+    ```
+  </Step>
+
+  <Step title="Run in snapshot mode (one-shot, no animation)">
+    ```bash
+    npx tsx examples/weather-dashboard.ts --city "Tokyo" --once
+    ```
+    
+    The `--once` flag renders a single frame to stdout and exits — useful for piping, screenshots, or testing.
+  </Step>
+</Steps>
+
+## Command-Line Options
+
+| Flag | Description | Default |
+|------|-------------|----------|
+| `-c, --city <name>` | City name for weather lookup | `New York` |
+| `-u, --units <celsius\|fahrenheit>` | Temperature units | `celsius` |
+| `-w, --width <columns>` | Dashboard width | Terminal width |
+| `-hgt, --height <rows>` | Dashboard height | Terminal height |
+| `-r, --refresh <seconds>` | Weather refresh interval | `600` (10 min) |
+| `--fps <frames>` | UI frame rate for animation | `6` |
+| `--once` | Render once and exit (snapshot mode) | `false` |
+| `-h, --help` | Show help message | — |
+
+<Tip>
+  Use `--once` mode for screenshots, testing, or when you want to avoid the interactive loop.
+</Tip>
+
+## Key Code Patterns
+
+### Live Backend with Alternate Screen
+
+```typescript
+const createNodeBackend = (): Backend => {
+  let cursor: Position = { x: 0, y: 0 };
+
+  return {
+    size: (): Size => ({
+      width: Math.max(20, process.stdout.columns ?? 80),
+      height: Math.max(10, process.stdout.rows ?? 24),
+    }),
+
+    draw: (content): void => {
+      let output = '';
+      let lastStyle = '';
+
+      for (const { x, y, cell } of content) {
+        output += `\x1b[${y + 1};${x + 1}H`;  // move cursor
+        const style = cellStyleToAnsi(cell);
+        if (style !== lastStyle) {
+          output += style;
+          lastStyle = style;
+        }
+        output += cell.symbol.length > 0 ? cell.symbol : ' ';
+      }
+
+      output += '\x1b[0m';
+      process.stdout.write(output);
+    },
+
+    // ... hideCursor, showCursor, setCursorPosition, clear ...
+  };
+};
+```
+
+<Note>
+  The Node backend batches all cell updates into a single `stdout.write()` call to minimize I/O and reduce flicker.
+</Note>
+
+### Fetching Weather Data
+
+```typescript
+const fetchWeather = async (
+  location: GeocodeResult,
+  units: TemperatureUnit,
+): Promise<WeatherResponse> => {
+  const temperatureUnit = units === 'fahrenheit' ? 'fahrenheit' : 'celsius';
+  const windSpeedUnit = units === 'fahrenheit' ? 'mph' : 'kmh';
+  const precipitationUnit = units === 'fahrenheit' ? 'inch' : 'mm';
+
+  const params = new URLSearchParams({
+    latitude: String(location.latitude),
+    longitude: String(location.longitude),
+    timezone: 'auto',
+    temperature_unit: temperatureUnit,
+    wind_speed_unit: windSpeedUnit,
+    precipitation_unit: precipitationUnit,
+    forecast_days: '7',
+    current: [
+      'temperature_2m',
+      'apparent_temperature',
+      'relative_humidity_2m',
+      'precipitation',
+      'weather_code',
+      'wind_speed_10m',
+      'wind_direction_10m',
+    ].join(','),
+    hourly: ['temperature_2m', 'precipitation_probability', ...].join(','),
+    daily: ['weather_code', 'temperature_2m_max', ...].join(','),
+  });
+
+  const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+  return fetchJson<WeatherResponse>(url);
+};
+```
+
+### Rendering the Dashboard
+
+```typescript
+const renderWeatherDashboard = (frame: Frame, data: DashboardData, runtime: LiveRuntime): void => {
+  const rootLayout = createLayout([lengthConstraint(3), fillConstraint(1), lengthConstraint(5)]);
+  const [headerArea, bodyArea, footerArea] = splitLayout(rootLayout, frame.area);
+
+  // Header tabs
+  const tabs = createTabs(['Current', 'Hourly', '5-Day'], {
+    selected: 0,
+    block: blockBordered({
+      titles: [createTitle('Weather Dashboard', { alignment: 'center' })],
+      borderStyle: styleFg(createStyle(), Color.LightBlue),
+    }),
+  });
+  frameRenderWidget(frame, renderTabs(tabs), headerArea);
+
+  // Body: left panel (current conditions + gauges) + right panel (hourly table + sparkline)
+  const bodyLayout = createLayout([lengthConstraint(38), fillConstraint(1)], {
+    direction: 'horizontal',
+  });
+  const [leftArea, rightArea] = splitLayout(bodyLayout, bodyArea);
+
+  // Current conditions paragraph
+  const currentSummary = [
+    data.locationLabel,
+    weatherLabel(data.current.weatherCode),
+    `Now: ${data.current.temperature.toFixed(1)} ${data.temperatureUnit}`,
+    `Feels: ${data.current.feelsLike.toFixed(1)} ${data.temperatureUnit}`,
+    // ...
+  ].join('\n');
+
+  // Gauges (humidity, rain chance, wind)
+  const humidityGauge = gaugePercent(data.current.humidity, {
+    block: blockBordered({ titles: [createTitle('Humidity')] }),
+    useUnicode: true,
+    gaugeStyle: styleFg(createStyle(), Color.Cyan),
+  });
+
+  // ...
+};
+```
+
+### Main Loop with Resize Handling
+
+```typescript
+const runLiveDashboard = async (location: GeocodeResult, options: CliOptions): Promise<void> => {
+  const backend = createNodeBackend();
+  const terminal = createTerminal(backend);
+
+  let running = true;
+  let dashboardData: DashboardData | undefined;
+
+  const onResize = (): void => {
+    terminalResize(terminal, backend.size());
+  };
+
+  process.stdout.on('resize', onResize);
+  enterAlternateScreen();
+  terminalResize(terminal, backend.size());
+
+  try {
+    await refreshWeatherData();
+
+    while (running) {
+      const now = new Date();
+      if (shouldRefresh) {
+        void refreshWeatherData();
+      }
+
+      terminalDraw(terminal, (frame) => {
+        if (dashboardData === undefined) {
+          renderLoadingDashboard(frame, location.name, runtime);
+        } else {
+          renderWeatherDashboard(frame, dashboardData, runtime);
+        }
+      });
+
+      await sleep(frameDelayMs);
+    }
+  } finally {
+    exitAlternateScreen();
+  }
+};
+```
+
+<Note>
+  The dashboard handles terminal resize events dynamically by calling `terminalResize` and re-rendering the frame.
+</Note>
+
+## Snapshot Mode vs. Live Mode
+
+### Snapshot Mode (`--once`)
+
+Renders **one frame** to stdout using the test backend, then exits:
+
+```typescript
+const runSnapshotDashboard = async (location: GeocodeResult, options: CliOptions): Promise<void> => {
+  const weather = await fetchWeather(location, options.units);
+  const data = buildDashboardData(location, weather, options.units);
+
+  const state = createTestBackendState(options.width, options.height);
+  const backend = createTestBackend(state);
+  const terminal = createTerminal(backend);
+
+  terminalDraw(terminal, (frame) => {
+    renderWeatherDashboard(frame, data, runtime);
+  });
+
+  if (supportsAnsiColor()) {
+    process.stdout.write(`${testBackendToAnsi(state)}\n`);
+  } else {
+    console.log(testBackendToString(state));
+  }
+};
+```
+
+<Tip>
+  Snapshot mode is perfect for:
+  - Testing layouts without waiting for the live loop
+  - Generating screenshots for documentation
+  - Piping weather output to files or other commands
+</Tip>
+
+### Live Mode (default)
+
+Runs in **alternate screen** with:
+- Auto-refresh on configurable interval (default 10 minutes)
+- Keyboard quit (`q` or `Ctrl+C`)
+- Terminal resize handling
+- Loading states and error messages
+- Animated status spinner

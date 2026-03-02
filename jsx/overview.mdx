@@ -1,0 +1,200 @@
+---
+title: JSX API Overview
+description: Introduction to terminui's JSX API for building terminal UIs with React-like syntax
+---
+
+## What is the JSX API?
+
+terminui provides a JSX API that lets you build terminal UIs using React-like syntax while maintaining the same high-performance rendering model.
+
+**Key characteristics:**
+
+- **No virtual DOM reconciler** — JSX is translated directly into the same widget render calls (`frameRenderWidget`, `frameRenderStatefulWidget`)
+- **Same double-buffered renderer** — only changed cells are flushed to the terminal
+- **Familiar syntax** — if you know React, you already know how to use it
+- **Full TypeScript support** — strict typing for all components and props
+
+## Quick Example
+
+```tsx
+/** @jsxImportSource terminui */
+import { createTestBackendState, createTestBackend, createTerminal } from 'terminui';
+import { terminalDrawJsx, Column, Row, Panel, Label, List, Gauge } from 'terminui/jsx';
+import { lengthConstraint, fillConstraint } from 'terminui';
+
+const state = createTestBackendState(60, 12);
+const terminal = createTerminal(createTestBackend(state));
+
+terminalDrawJsx(
+  terminal,
+  <Column constraints={[lengthConstraint(3), fillConstraint(1)]}>
+    <Panel title="Header" p={1}>
+      <Label text="JSX-powered terminal UI" align="center" bold />
+    </Panel>
+    <Row constraints={[fillConstraint(1), fillConstraint(1)]} gap={1}>
+      <Panel title="Menu">
+        <List items={['Overview', 'Metrics', 'Logs']} />
+      </Panel>
+      <Panel title="Load">
+        <Gauge percent={42} />
+      </Panel>
+    </Row>
+  </Column>,
+);
+```
+
+## JSX vs Functional API
+
+<Tabs items={['JSX', 'Functional']}>
+  <Tab value="JSX">
+    ```tsx
+    terminalDrawJsx(
+      terminal,
+      <Panel title="Hello" p={1}>
+        <Label text="Hello, terminui!" fg={Color.Cyan} bold />
+      </Panel>
+    );
+    ```
+  </Tab>
+  <Tab value="Functional">
+    ```typescript
+    terminalDraw(terminal, (frame) => {
+      const paragraph = createParagraph('Hello, terminui!', {
+        block: blockBordered({ 
+          titles: [createTitle('Hello')],
+          padding: uniformPadding(1)
+        }),
+        style: styleAddModifier(styleFg(createStyle(), Color.Cyan), Modifier.BOLD),
+      });
+      frameRenderWidget(frame, renderParagraph(paragraph), frame.area);
+    });
+    ```
+  </Tab>
+</Tabs>
+
+### When to use JSX
+
+**Use JSX when:**
+- You prefer declarative, component-based syntax
+- You're building complex layouts with many nested components
+- Your team is familiar with React patterns
+- You want rapid prototyping with less boilerplate
+
+**Use the functional API when:**
+- You need maximum performance for tight loops
+- You're working with low-level rendering primitives
+- You prefer explicit, functional composition
+- You don't want to set up JSX tooling
+
+## TypeScript Configuration
+
+To use JSX with terminui, configure your TypeScript compiler:
+
+### tsconfig.json
+
+```json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "terminui"
+  }
+}
+```
+
+### Per-file override (optional)
+
+You can also configure JSX on a per-file basis:
+
+```tsx
+/** @jsxRuntime automatic */
+/** @jsxImportSource terminui */
+import { terminalDrawJsx, Panel, Label } from 'terminui/jsx';
+
+// Your JSX code here
+```
+
+<Note>
+  The `@jsxImportSource` pragma tells TypeScript to use terminui's JSX runtime instead of React's.
+</Note>
+
+## Rendering Functions
+
+terminui provides two main functions for rendering JSX:
+
+### terminalDrawJsx
+
+Render a single frame with JSX:
+
+```tsx
+import { terminalDrawJsx } from 'terminui/jsx';
+
+terminalDrawJsx(
+  terminal,
+  <Panel title="Single Frame">
+    <Label text="Rendered once" />
+  </Panel>
+);
+```
+
+### terminalLoopJsx
+
+Render multiple frames in a loop (for animations or live updates):
+
+```tsx
+import { terminalLoopJsx } from 'terminui/jsx';
+
+terminalLoopJsx(
+  terminal,
+  (frame, tick) => (
+    <Panel title={`Frame ${tick}`}>
+      <Gauge percent={(tick % 100)} />
+    </Panel>
+  ),
+  { maxFrames: 120 }
+);
+```
+
+**Options:**
+- `maxFrames` — maximum number of frames to render
+- `continueWhile` — function that returns `true` to keep rendering
+
+<Warning>
+  You must provide either `maxFrames` or `continueWhile` — the loop won't run without a stopping condition.
+</Warning>
+
+## Import Paths
+
+JSX components are exported from a separate entry point:
+
+```tsx
+// Core terminal setup
+import { createTerminal, createTestBackend } from 'terminui';
+
+// Layout constraints
+import { lengthConstraint, fillConstraint } from 'terminui';
+
+// JSX components and rendering functions
+import { 
+  terminalDrawJsx, 
+  terminalLoopJsx,
+  Panel, 
+  Label, 
+  List, 
+  Row, 
+  Column 
+} from 'terminui/jsx';
+
+// Styles and colors
+import { Color, Modifier } from 'terminui';
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Component Reference" icon="shapes" href="/jsx/components">
+    Explore all available JSX components and their props
+  </Card>
+  <Card title="Examples" icon="code" href="/jsx/examples">
+    See complete working examples and common patterns
+  </Card>
+</CardGroup>

@@ -1,0 +1,283 @@
+---
+title: Symbols API
+description: Box drawing and special character symbols
+---
+
+## Overview
+
+The Symbols API provides predefined sets of Unicode characters for drawing borders, bars, lines, scrollbars, and other terminal UI elements.
+
+## Types
+
+### BorderSet
+
+```typescript
+interface BorderSet {
+  readonly topLeft: string;
+  readonly topRight: string;
+  readonly bottomLeft: string;
+  readonly bottomRight: string;
+  readonly horizontalTop: string;
+  readonly horizontalBottom: string;
+  readonly verticalLeft: string;
+  readonly verticalRight: string;
+  readonly cross: string;
+}
+```
+
+### BarSet
+
+```typescript
+interface BarSet {
+  readonly full: string;
+  readonly sevenEighths: string;
+  readonly threeQuarters: string;
+  readonly fiveEighths: string;
+  readonly half: string;
+  readonly threeEighths: string;
+  readonly oneQuarter: string;
+  readonly oneEighth: string;
+  readonly empty: string;
+}
+```
+
+### LineSet
+
+```typescript
+interface LineSet {
+  readonly horizontal: string;
+  readonly vertical: string;
+  readonly cross: string;
+}
+```
+
+### ScrollbarSet
+
+```typescript
+interface ScrollbarSet {
+  readonly track: string;
+  readonly thumb: string;
+  readonly begin: string;
+  readonly end: string;
+}
+```
+
+### Marker
+
+```typescript
+type Marker = 'dot' | 'block' | 'bar' | 'braille' | 'halfBlock';
+```
+
+## Border Symbols
+
+### border
+
+Predefined border styles for drawing boxes.
+
+```typescript
+const border = {
+  PLAIN: BorderSet,        // ┌─┐│└─┘│┼
+  ROUNDED: BorderSet,      // ╭─╮│╰─╯│┼
+  DOUBLE: BorderSet,       // ╔═╗║╚═╝║╬
+  THICK: BorderSet,        // ┏━┓┃┗━┛┃╋
+  QUADRANT_INSIDE: BorderSet,
+  QUADRANT_OUTSIDE: BorderSet,
+  EMPTY: BorderSet,        // All empty strings
+};
+```
+
+**Example:**
+
+```typescript
+import { border } from 'terminui';
+
+const box = border.ROUNDED;
+console.log(box.topLeft);     // ╭
+console.log(box.topRight);    // ╮
+console.log(box.bottomLeft);  // ╰
+console.log(box.bottomRight); // ╯
+```
+
+**Border Styles:**
+
+- **PLAIN**: Standard box-drawing characters (┌─┐│)
+- **ROUNDED**: Rounded corners (╭─╮│)
+- **DOUBLE**: Double-line borders (╔═╗║)
+- **THICK**: Thick line borders (┏━┓┃)
+- **QUADRANT_INSIDE**: Quadrant block characters, inner style
+- **QUADRANT_OUTSIDE**: Quadrant block characters, outer style
+- **EMPTY**: No visible borders
+
+---
+
+## Bar Symbols
+
+### bar
+
+Predefined bar chart character sets.
+
+```typescript
+const bar = {
+  NINE_LEVELS: BarSet,   // █▇▆▅▄▃▂▁
+  THREE_LEVELS: BarSet,  // █░▄
+  ASCII: BarSet,         // #-
+};
+```
+
+**Example:**
+
+```typescript
+import { bar } from 'terminui';
+
+const bars = bar.NINE_LEVELS;
+console.log(bars.full);          // █
+console.log(bars.half);          // ▄
+console.log(bars.oneQuarter);    // ▂
+console.log(bars.empty);         // (space)
+```
+
+**Bar Styles:**
+
+- **NINE_LEVELS**: 9 levels of fill using block characters (█▇▆▅▄▃▂▁ )
+- **THREE_LEVELS**: 3 levels using full block, shade, and half block (█░▄)
+- **ASCII**: ASCII-compatible bars using # and -
+
+---
+
+## Line Symbols
+
+### line
+
+Predefined line drawing character sets.
+
+```typescript
+const line = {
+  NORMAL: LineSet,   // ─│┼
+  THICK: LineSet,    // ━┃╋
+  DOUBLE: LineSet,   // ═║╬
+};
+```
+
+**Example:**
+
+```typescript
+import { line } from 'terminui';
+
+const lines = line.THICK;
+console.log(lines.horizontal); // ━
+console.log(lines.vertical);   // ┃
+console.log(lines.cross);      // ╋
+```
+
+**Line Styles:**
+
+- **NORMAL**: Standard line characters (─│┼)
+- **THICK**: Thick line characters (━┃╋)
+- **DOUBLE**: Double-line characters (═║╬)
+
+---
+
+## Scrollbar Symbols
+
+### scrollbar
+
+Predefined scrollbar character sets.
+
+```typescript
+const scrollbar = {
+  VERTICAL: ScrollbarSet,
+  HORIZONTAL: ScrollbarSet,
+  DOUBLE_VERTICAL: ScrollbarSet,
+  DOUBLE_HORIZONTAL: ScrollbarSet,
+};
+```
+
+**Example:**
+
+```typescript
+import { scrollbar } from 'terminui';
+
+const sb = scrollbar.VERTICAL;
+console.log(sb.track); // │
+console.log(sb.thumb); // █
+console.log(sb.begin); // ↑
+console.log(sb.end);   // ↓
+```
+
+**Scrollbar Styles:**
+
+- **VERTICAL**: Vertical scrollbar (│█↑↓)
+- **HORIZONTAL**: Horizontal scrollbar (─█←→)
+- **DOUBLE_VERTICAL**: Double-line vertical scrollbar (║▐▲▼)
+- **DOUBLE_HORIZONTAL**: Double-line horizontal scrollbar (═▌◄►)
+
+---
+
+## Shade Symbols
+
+### shade
+
+Block shading characters.
+
+```typescript
+const shade = {
+  FULL: '█',
+  DARK: '▓',
+  MEDIUM: '▒',
+  LIGHT: '░',
+  EMPTY: ' ',
+};
+```
+
+**Example:**
+
+```typescript
+import { shade } from 'terminui';
+
+console.log(shade.FULL);   // █
+console.log(shade.DARK);   // ▓
+console.log(shade.MEDIUM); // ▒
+console.log(shade.LIGHT);  // ░
+console.log(shade.EMPTY);  // (space)
+```
+
+---
+
+## Braille Constants
+
+### BRAILLE_OFFSET
+
+The Unicode offset for Braille patterns.
+
+```typescript
+const BRAILLE_OFFSET = 0x2800;
+```
+
+Used as the base offset for calculating Braille pattern characters.
+
+---
+
+### BRAILLE_DOTS
+
+Braille dot position mapping.
+
+```typescript
+const BRAILLE_DOTS: readonly (readonly [number, number])[] = [
+  [0x01, 0x08],
+  [0x02, 0x10],
+  [0x04, 0x20],
+  [0x40, 0x80],
+];
+```
+
+Maps Braille dot positions to their bit values. Each element is a tuple of [left dot, right dot] for each of the 4 rows.
+
+**Example:**
+
+```typescript
+import { BRAILLE_OFFSET, BRAILLE_DOTS } from 'terminui';
+
+// Create a Braille pattern with dots 1, 2, and 3
+const pattern = BRAILLE_OFFSET | BRAILLE_DOTS[0][0] | BRAILLE_DOTS[1][0] | BRAILLE_DOTS[2][0];
+const char = String.fromCodePoint(pattern); // ⠇
+```

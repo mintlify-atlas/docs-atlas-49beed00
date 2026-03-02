@@ -1,0 +1,261 @@
+---
+title: Terminal API
+description: Terminal and frame management functions
+---
+
+## Overview
+
+The Terminal API provides functions for creating and managing terminal instances, drawing frames, and controlling cursor behavior.
+
+## Types
+
+### Terminal
+
+```typescript
+interface Terminal {
+  readonly backend: Backend;
+  buffers: readonly [Buffer, Buffer];
+  current: number;
+  readonly viewport: Viewport;
+  readonly viewportArea: Rect;
+  hiddenCursor: boolean;
+  frameCount: number;
+}
+```
+
+### Frame
+
+```typescript
+interface Frame {
+  readonly buffer: Buffer;
+  readonly area: Rect;
+  readonly count: number;
+  cursorPosition?: Position;
+}
+```
+
+### CompletedFrame
+
+```typescript
+interface CompletedFrame {
+  readonly buffer: Buffer;
+  readonly area: Rect;
+  readonly count: number;
+}
+```
+
+### Viewport
+
+```typescript
+type Viewport = 'fullscreen' | 'inline' | 'fixed';
+```
+
+### TerminalOptions
+
+```typescript
+interface TerminalOptions {
+  readonly viewport: Viewport;
+}
+```
+
+## Terminal Functions
+
+### createTerminal
+
+Creates a new terminal instance with the specified backend.
+
+```typescript
+const createTerminal = (
+  backend: Backend,
+  options?: Partial<TerminalOptions>
+): Terminal
+```
+
+<ParamField path="backend" type="Backend" required>
+  The backend implementation for rendering
+</ParamField>
+
+<ParamField path="options" type="Partial<TerminalOptions>">
+  Optional terminal configuration
+  - `viewport`: Viewport mode ('fullscreen' | 'inline' | 'fixed')
+</ParamField>
+
+**Returns:** A new `Terminal` instance
+
+---
+
+### terminalDraw
+
+Draws a frame by executing the render function and updating the display.
+
+```typescript
+const terminalDraw = (
+  terminal: Terminal,
+  renderFn: (frame: Frame) => void
+): CompletedFrame
+```
+
+<ParamField path="terminal" type="Terminal" required>
+  The terminal instance to draw to
+</ParamField>
+
+<ParamField path="renderFn" type="(frame: Frame) => void" required>
+  Function that renders content to the frame's buffer
+</ParamField>
+
+**Returns:** A `CompletedFrame` with the rendered buffer and metadata
+
+---
+
+### terminalClear
+
+Clears the terminal display.
+
+```typescript
+const terminalClear = (terminal: Terminal): void
+```
+
+<ParamField path="terminal" type="Terminal" required>
+  The terminal instance to clear
+</ParamField>
+
+---
+
+### terminalSetCursorPosition
+
+Sets the cursor position in the terminal.
+
+```typescript
+const terminalSetCursorPosition = (terminal: Terminal, pos: Position): void
+```
+
+<ParamField path="terminal" type="Terminal" required>
+  The terminal instance
+</ParamField>
+
+<ParamField path="pos" type="Position" required>
+  The position to set the cursor to
+</ParamField>
+
+---
+
+### terminalHideCursor
+
+Hides the terminal cursor.
+
+```typescript
+const terminalHideCursor = (terminal: Terminal): void
+```
+
+<ParamField path="terminal" type="Terminal" required>
+  The terminal instance
+</ParamField>
+
+---
+
+### terminalShowCursor
+
+Shows the terminal cursor.
+
+```typescript
+const terminalShowCursor = (terminal: Terminal): void
+```
+
+<ParamField path="terminal" type="Terminal" required>
+  The terminal instance
+</ParamField>
+
+---
+
+### terminalResize
+
+Resizes the terminal to the specified dimensions.
+
+```typescript
+const terminalResize = (terminal: Terminal, size: Size): void
+```
+
+<ParamField path="terminal" type="Terminal" required>
+  The terminal instance to resize
+</ParamField>
+
+<ParamField path="size" type="Size" required>
+  The new size with `width` and `height` properties
+</ParamField>
+
+---
+
+## Frame Functions
+
+### frameRenderWidget
+
+Renders a widget to a frame at the specified area.
+
+```typescript
+const frameRenderWidget = (
+  frame: Frame,
+  renderer: WidgetRenderer,
+  area: Rect
+): void
+```
+
+<ParamField path="frame" type="Frame" required>
+  The frame to render to
+</ParamField>
+
+<ParamField path="renderer" type="WidgetRenderer" required>
+  The widget renderer function
+</ParamField>
+
+<ParamField path="area" type="Rect" required>
+  The rectangular area to render the widget in
+</ParamField>
+
+---
+
+### frameRenderStatefulWidget
+
+Renders a stateful widget to a frame at the specified area.
+
+```typescript
+const frameRenderStatefulWidget = <S>(
+  frame: Frame,
+  renderer: StatefulWidgetRenderer<S>,
+  area: Rect,
+  state: S
+): void
+```
+
+<ParamField path="frame" type="Frame" required>
+  The frame to render to
+</ParamField>
+
+<ParamField path="renderer" type="StatefulWidgetRenderer<S>" required>
+  The stateful widget renderer function
+</ParamField>
+
+<ParamField path="area" type="Rect" required>
+  The rectangular area to render the widget in
+</ParamField>
+
+<ParamField path="state" type="S" required>
+  The state to pass to the widget renderer
+</ParamField>
+
+---
+
+### frameSetCursorPosition
+
+Sets the cursor position for the current frame.
+
+```typescript
+const frameSetCursorPosition = (frame: Frame, pos: Position): void
+```
+
+<ParamField path="frame" type="Frame" required>
+  The frame to set the cursor position on
+</ParamField>
+
+<ParamField path="pos" type="Position" required>
+  The position to set the cursor to
+</ParamField>

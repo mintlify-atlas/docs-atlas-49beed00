@@ -1,0 +1,238 @@
+---
+title: Block
+description: Container widget with borders, titles, and padding
+---
+
+The **Block** widget is a foundational container that provides borders, titles, and padding around content. It's the building block for creating visually structured terminal UIs.
+
+## Visual Example
+
+```
+┌Header────────────────────────────────────────────────┐
+│                                                      │
+│  Content goes here with padding and borders         │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
+
+## Basic Usage
+
+```typescript
+import { blockBordered, createTitle, renderBlock, uniformPadding } from 'terminui';
+
+const block = blockBordered({
+  titles: [
+    createTitle('Header'),
+    createTitle('Footer', { position: 'bottom', alignment: 'center' }),
+  ],
+  borderType: 'rounded',
+  padding: uniformPadding(1),
+});
+
+frameRenderWidget(frame, renderBlock(block), area);
+```
+
+## Configuration Options
+
+### BlockConfig
+
+```typescript
+interface BlockConfig {
+  readonly titles: readonly Title[];
+  readonly borders: number;
+  readonly borderType: BorderType;
+  readonly borderStyle: Style;
+  readonly style: Style;
+  readonly padding: Padding;
+}
+```
+
+### Border Types
+
+| Border Type | Description | Example |
+|------------|-------------|----------|
+| `'plain'` | Standard box drawing characters | `┌─┐` |
+| `'rounded'` | Rounded corners | `╭─╮` |
+| `'double'` | Double-line borders | `╔═╗` |
+| `'thick'` | Thick borders | `┏━┓` |
+| `'quadrantInside'` | Quadrant inside corners | `▗▄▖` |
+| `'quadrantOutside'` | Quadrant outside corners | `▛▀▜` |
+
+### Borders
+
+Control which borders to display using the `Borders` constants:
+
+```typescript
+const Borders = {
+  NONE: 0,
+  TOP: 1,
+  RIGHT: 2,
+  BOTTOM: 4,
+  LEFT: 8,
+  ALL: 15,  // TOP | RIGHT | BOTTOM | LEFT
+};
+
+// Custom borders
+const topBottom = Borders.TOP | Borders.BOTTOM;
+const leftRight = Borders.LEFT | Borders.RIGHT;
+```
+
+## Titles
+
+Add titles to the top or bottom borders:
+
+```typescript
+import { createTitle } from 'terminui';
+
+const title = createTitle('My Title', {
+  alignment: 'center',  // 'left' | 'center' | 'right'
+  position: 'top',      // 'top' | 'bottom'
+});
+```
+
+### Title Properties
+
+```typescript
+interface Title {
+  readonly content: Line;
+  readonly alignment?: 'left' | 'center' | 'right';
+  readonly position?: 'top' | 'bottom';
+}
+```
+
+## Padding
+
+Control internal spacing with padding helpers:
+
+```typescript
+import {
+  uniformPadding,
+  horizontalPadding,
+  verticalPadding,
+  createPadding,
+  noPadding,
+} from 'terminui';
+
+// All sides equal
+const p1 = uniformPadding(2);
+
+// Horizontal only
+const px = horizontalPadding(3);
+
+// Vertical only
+const py = verticalPadding(1);
+
+// Custom (top, right, bottom, left)
+const custom = createPadding(1, 2, 1, 2);
+
+// No padding
+const none = noPadding();
+```
+
+### Padding Interface
+
+```typescript
+interface Padding {
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly left: number;
+}
+```
+
+## Helper Functions
+
+### createBlock
+
+Create a block with custom options:
+
+```typescript
+const block = createBlock({
+  borders: Borders.ALL,
+  borderType: 'plain',
+  borderStyle: styleFg(createStyle(), Color.Cyan),
+  style: createStyle(),
+  padding: uniformPadding(1),
+  titles: [createTitle('My Block')],
+});
+```
+
+### blockBordered
+
+Convenience function for bordered blocks:
+
+```typescript
+// Equivalent to createBlock({ borders: Borders.ALL, ...overrides })
+const block = blockBordered({
+  borderType: 'rounded',
+  titles: [createTitle('Bordered')],
+});
+```
+
+### blockInner
+
+Calculate the inner area after borders and padding:
+
+```typescript
+import { blockInner } from 'terminui';
+
+const block = blockBordered({ padding: uniformPadding(2) });
+const innerArea = blockInner(block, area);
+// innerArea has borders and padding subtracted
+```
+
+## Complete Example
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderWidget,
+  blockBordered,
+  createTitle,
+  uniformPadding,
+  renderBlock,
+  styleFg,
+  createStyle,
+  Color,
+} from 'terminui';
+
+const state = createTestBackendState(60, 10);
+const terminal = createTerminal(createTestBackend(state));
+
+terminalDraw(terminal, (frame) => {
+  const block = blockBordered({
+    titles: [
+      createTitle('Terminal UI'),
+      createTitle('Press ESC to quit', { position: 'bottom', alignment: 'right' }),
+    ],
+    borderType: 'rounded',
+    borderStyle: styleFg(createStyle(), Color.Cyan),
+    padding: uniformPadding(1),
+  });
+
+  frameRenderWidget(frame, renderBlock(block), frame.area);
+});
+```
+
+<Note>
+Blocks are typically used as containers for other widgets. Most widgets accept an optional `block` parameter to wrap themselves with borders and padding.
+</Note>
+
+## Type Reference
+
+```typescript
+// From src/widgets/block.ts
+type BorderType = 'plain' | 'rounded' | 'double' | 'thick' | 'quadrantInside' | 'quadrantOutside';
+
+function createBlock(overrides?: Partial<BlockConfig>): BlockConfig;
+function blockBordered(overrides?: Partial<BlockConfig>): BlockConfig;
+function blockInner(block: BlockConfig, area: Rect): Rect;
+function renderBlock(block: BlockConfig): WidgetRenderer;
+function createTitle(
+  content: string | Line,
+  overrides?: { readonly alignment?: Alignment; readonly position?: 'top' | 'bottom' }
+): Title;
+```

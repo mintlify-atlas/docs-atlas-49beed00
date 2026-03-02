@@ -1,0 +1,491 @@
+---
+title: JSX Components
+description: Complete reference for all JSX components in terminui
+---
+
+## Layout Components
+
+### VStack / Column
+
+Vertical stack container that arranges children in rows.
+
+<Note>
+  `Column` is an alias for `VStack` — they are identical.
+</Note>
+
+**Props:**
+
+```typescript
+interface StackProps {
+  readonly constraints?: readonly Constraint[];
+  readonly margin?: Margin;
+  readonly spacing?: Spacing | number;
+  readonly gap?: number;  // shorthand for spacing
+  readonly children?: JsxNode;
+}
+```
+
+**Example:**
+
+```tsx
+<Column constraints={[lengthConstraint(3), fillConstraint(1)]}>
+  <Panel title="Header" />
+  <Panel title="Body" />
+</Column>
+```
+
+### HStack / Row
+
+Horizontal stack container that arranges children in columns.
+
+<Note>
+  `Row` is an alias for `HStack` — they are identical.
+</Note>
+
+**Props:** Same as `VStack`
+
+**Example:**
+
+```tsx
+<Row constraints={[fillConstraint(1), fillConstraint(2)]} gap={1}>
+  <Panel title="Sidebar" />
+  <Panel title="Main Content" />
+</Row>
+```
+
+### Constraints
+
+Both stacks support layout constraints for sizing children:
+
+- `lengthConstraint(n)` — exactly `n` cells
+- `percentageConstraint(n)` — `n`% of available space
+- `fillConstraint(weight)` — fill remaining space with optional weight
+- `minConstraint(n)` — at least `n` cells
+- `maxConstraint(n)` — at most `n` cells
+
+```tsx
+<Column constraints={[
+  lengthConstraint(3),      // header: 3 rows
+  fillConstraint(1),        // body: remaining space
+  lengthConstraint(1),      // footer: 1 row
+]}>
+  <Panel title="Header" />
+  <Panel title="Body" />
+  <Panel title="Footer" />
+</Column>
+```
+
+## Container Components
+
+### Box
+
+Generic container with optional borders, padding, and styling.
+
+**Props:**
+
+```typescript
+interface BoxProps extends Partial<BlockConfig>, StyleShorthands, BlockShorthands {
+  readonly bordered?: boolean;
+  readonly children?: JsxNode;
+}
+```
+
+**Example:**
+
+```tsx
+<Box border title="Container" p={1}>
+  <Label text="Content inside box" />
+</Box>
+```
+
+### Panel
+
+Container with borders enabled by default. Alias for `<Box bordered>`.
+
+**Props:** Same as `Box`
+
+**Example:**
+
+```tsx
+<Panel title="My Panel" p={1}>
+  <Label text="Bordered by default" />
+</Panel>
+```
+
+## Text Components
+
+### Text / Label
+
+Display text with optional alignment, wrapping, and styling.
+
+<Note>
+  `Label` is an alias for `Text` — they are identical.
+</Note>
+
+**Props:**
+
+```typescript
+interface TextProps extends Partial<Omit<ParagraphConfig, 'text'>>, StyleShorthands, BlockShorthands {
+  readonly text?: RichText | string;
+  readonly align?: Alignment;  // 'left' | 'center' | 'right'
+  readonly children?: JsxNode;
+}
+```
+
+**Example:**
+
+```tsx
+<Label text="Centered text" align="center" fg={Color.Cyan} bold />
+
+{/* Text from children */}
+<Text align="right">This is right-aligned</Text>
+```
+
+## Widget Components
+
+### List
+
+Scrollable list with optional selection state.
+
+**Props:**
+
+```typescript
+interface ListProps extends Partial<Omit<ListConfig, 'items'>>, StyleShorthands, BlockShorthands {
+  readonly items: readonly (string | ListItem)[];
+  readonly state?: ListState;
+}
+```
+
+**Example:**
+
+```tsx
+import { createListState } from 'terminui';
+
+const listState = createListState(0); // selected index
+
+<List 
+  items={['Item 1', 'Item 2', 'Item 3']}
+  state={listState}
+  highlightSymbol="▶ "
+  border
+  title="Menu"
+/>
+```
+
+### Table
+
+Display tabular data with column constraints.
+
+**Props:**
+
+```typescript
+interface TableProps extends Partial<Omit<TableConfig, 'rows' | 'widths' | 'header' | 'footer'>>, StyleShorthands, BlockShorthands {
+  readonly rows: readonly TableRowInput[];
+  readonly widths: readonly Constraint[];
+  readonly header?: TableRowInput;
+  readonly footer?: TableRowInput;
+  readonly state?: TableState;
+}
+```
+
+**Example:**
+
+```tsx
+<Table
+  rows={[
+    ['Alice', '42', 'admin'],
+    ['Bob', '37', 'user'],
+  ]}
+  widths={[lengthConstraint(10), lengthConstraint(5), fillConstraint(1)]}
+  header={['Name', 'Age', 'Role']}
+  border
+  title="Users"
+/>
+```
+
+### Gauge
+
+Progress bar with percentage display.
+
+**Props:**
+
+```typescript
+interface GaugeProps extends Partial<GaugeConfig>, StyleShorthands, BlockShorthands {
+  readonly percent?: number;
+}
+```
+
+**Example:**
+
+```tsx
+<Gauge percent={67} border title="Progress" />
+```
+
+### LineGauge
+
+Compact single-line progress indicator.
+
+**Props:**
+
+```typescript
+interface LineGaugeProps extends Partial<LineGaugeConfig>, StyleShorthands, BlockShorthands {
+  readonly percent?: number;
+}
+```
+
+**Example:**
+
+```tsx
+<LineGauge percent={85} fg={Color.Green} />
+```
+
+### Tabs
+
+Horizontal tab navigation.
+
+**Props:**
+
+```typescript
+interface TabsProps extends Partial<Omit<TabsConfig, 'titles'>>, StyleShorthands, BlockShorthands {
+  readonly titles: readonly (string | Line)[];
+}
+```
+
+**Example:**
+
+```tsx
+<Tabs 
+  titles={['Dashboard', 'Logs', 'Settings']}
+  selected={0}
+  highlightStyle={styleFg(createStyle(), Color.Yellow)}
+/>
+```
+
+### Sparkline
+
+Inline data visualization with Unicode characters.
+
+**Props:**
+
+```typescript
+interface SparklineProps extends Partial<Omit<SparklineConfig, 'data'>>, StyleShorthands, BlockShorthands {
+  readonly data: readonly number[];
+}
+```
+
+**Example:**
+
+```tsx
+<Sparkline 
+  data={[1, 4, 2, 8, 5, 3, 7, 6]}
+  fg={Color.Cyan}
+  border
+  title="CPU"
+/>
+```
+
+### BarChart
+
+Vertical or horizontal bar chart.
+
+**Props:**
+
+```typescript
+interface BarChartProps extends Partial<Omit<BarChartConfig, 'data'>>, StyleShorthands, BlockShorthands {
+  readonly data: readonly BarGroup[];
+}
+```
+
+**Example:**
+
+```tsx
+import { createBar, createBarGroup } from 'terminui';
+
+<BarChart
+  data={[
+    createBarGroup([createBar(5), createBar(8)], 'Group A'),
+    createBarGroup([createBar(3), createBar(6)], 'Group B'),
+  ]}
+  barWidth={3}
+  direction="vertical"
+  border
+  title="Chart"
+/>
+```
+
+### Scrollbar
+
+Scrollbar overlay for scrollable content.
+
+**Props:**
+
+```typescript
+interface ScrollbarProps extends Partial<Omit<ScrollbarConfig, 'orientation'>>, StyleShorthands {
+  readonly orientation: ScrollbarOrientation;  // 'verticalRight' | 'verticalLeft' | 'horizontalBottom' | 'horizontalTop'
+  readonly state: ScrollbarState;
+}
+```
+
+**Example:**
+
+```tsx
+import { createScrollbarState } from 'terminui';
+
+const scrollbarState = createScrollbarState(100, 25);
+scrollbarState.viewportContentLength = 20;
+
+<Scrollbar 
+  orientation="verticalRight"
+  state={scrollbarState}
+/>
+```
+
+## Utility Components
+
+### Clear
+
+Clears the rendering area.
+
+**Props:** None
+
+**Example:**
+
+```tsx
+<Clear />
+```
+
+### Cursor
+
+Set the cursor position.
+
+**Props:**
+
+```typescript
+interface CursorProps {
+  readonly x: number;
+  readonly y: number;
+  readonly absolute?: boolean;  // if true, use absolute coords; otherwise relative to area
+}
+```
+
+**Example:**
+
+```tsx
+<Cursor x={10} y={5} />
+```
+
+### Fragment
+
+Group children without adding a wrapper element.
+
+**Example:**
+
+```tsx
+import { Fragment } from 'terminui/jsx';
+
+<>
+  <Panel title="First" />
+  <Panel title="Second" />
+</>
+```
+
+## Shorthand Props
+
+Many components support shorthand props for common styling and layout:
+
+### Style Shorthands
+
+```typescript
+interface StyleShorthands {
+  readonly fg?: Style['fg'];     // foreground color
+  readonly bg?: Style['bg'];     // background color
+  readonly bold?: boolean;       // bold text
+}
+```
+
+**Example:**
+
+```tsx
+<Label text="Styled" fg={Color.Red} bg={Color.White} bold />
+```
+
+### Block Shorthands
+
+```typescript
+interface BlockShorthands {
+  readonly border?: boolean;     // enable/disable border
+  readonly title?: string | Title | readonly (string | Title)[];
+  readonly p?: number;           // padding (all sides)
+  readonly px?: number;          // padding (horizontal)
+  readonly py?: number;          // padding (vertical)
+}
+```
+
+**Example:**
+
+```tsx
+<Panel border title="My Panel" p={1}>
+  <Label text="Content with padding" />
+</Panel>
+
+<Box title={['Top Title', 'Bottom Title']} px={2} py={1}>
+  <Label text="Different horizontal and vertical padding" />
+</Box>
+```
+
+### Layout Shorthands
+
+```typescript
+// On Row/Column components
+interface StackProps {
+  readonly gap?: number;         // shorthand for spacing
+}
+```
+
+**Example:**
+
+```tsx
+<Row gap={2}>
+  <Panel title="First" />
+  <Panel title="Second" />
+</Row>
+```
+
+## Type Signatures
+
+All components are strongly typed with TypeScript. Import types from `terminui/jsx`:
+
+```typescript
+import type { 
+  StackProps,
+  BoxProps,
+  TextProps,
+  ListProps,
+  TableProps,
+  GaugeProps,
+  TabsProps,
+  SparklineProps,
+  BarChartProps,
+  ScrollbarProps,
+  CursorProps,
+} from 'terminui/jsx';
+```
+
+## Component Aliases
+
+For convenience, several components have React-like aliases:
+
+| Component | Alias | Notes |
+|-----------|-------|-------|
+| `VStack` | `Column` | Vertical stack layout |
+| `HStack` | `Row` | Horizontal stack layout |
+| `Box` | `Panel` | Panel has `bordered={true}` by default |
+| `Text` | `Label` | Identical functionality |
+
+**Example:**
+
+```tsx
+// These are equivalent
+<VStack><HStack><Box><Text /></Box></HStack></VStack>
+<Column><Row><Box><Label /></Box></Row></Column>
+```

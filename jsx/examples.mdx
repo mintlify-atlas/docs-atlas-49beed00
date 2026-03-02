@@ -1,0 +1,521 @@
+---
+title: JSX Examples
+description: Real-world examples and patterns for building terminal UIs with JSX
+---
+
+## Hello World
+
+Minimal starting point for JSX:
+
+```tsx
+/** @jsxRuntime automatic */
+/** @jsxImportSource terminui */
+import { 
+  createTestBackendState, 
+  createTestBackend, 
+  createTerminal, 
+  testBackendToString 
+} from 'terminui';
+import { terminalDrawJsx, Panel, Label } from 'terminui/jsx';
+import { Color } from 'terminui';
+
+const state = createTestBackendState(40, 6);
+const terminal = createTerminal(createTestBackend(state));
+
+terminalDrawJsx(
+  terminal,
+  <Panel title="Hello JSX" p={1}>
+    <Label 
+      text="terminal UI, React-like syntax" 
+      fg={Color.Cyan} 
+      bold 
+      align="center" 
+    />
+  </Panel>,
+);
+
+console.log(testBackendToString(state));
+```
+
+**Output:**
+
+```
+┌Hello JSX──────────────────────────┐
+│                                   │
+│  terminal UI, React-like syntax   │
+│                                   │
+│                                   │
+└───────────────────────────────────┘
+```
+
+## Dashboard Layout
+
+Complex layout with nested components:
+
+```tsx
+/** @jsxRuntime automatic */
+/** @jsxImportSource terminui */
+import { 
+  createTestBackend, 
+  createTestBackendState, 
+  testBackendToString 
+} from 'terminui';
+import { 
+  fillConstraint, 
+  lengthConstraint 
+} from 'terminui';
+import { createTerminal } from 'terminui';
+import { Color } from 'terminui';
+import {
+  Column,
+  Gauge,
+  Label,
+  List,
+  Panel,
+  Row,
+  terminalDrawJsx,
+} from 'terminui/jsx';
+import { createListState } from 'terminui';
+
+const WIDTH = 80;
+const HEIGHT = 18;
+
+const state = createTestBackendState(WIDTH, HEIGHT);
+const backend = createTestBackend(state);
+const terminal = createTerminal(backend);
+
+const listState = createListState(1);  // second item selected
+
+terminalDrawJsx(
+  terminal,
+  <Column constraints={[
+    lengthConstraint(3),    // header
+    fillConstraint(1),      // body
+    lengthConstraint(3)     // footer
+  ]}>
+    {/* Header */}
+    <Panel title="terminui JSX" p={1}>
+      <Label
+        text="React-like JSX syntax on top of the same fast diff renderer."
+        align="center"
+        fg={Color.LightCyan}
+        bold
+      />
+    </Panel>
+
+    {/* Body: two-column layout */}
+    <Row constraints={[fillConstraint(1), fillConstraint(1)]} gap={1}>
+      <Panel title="Tasks">
+        <List
+          items={[
+            'Fetch data',
+            'Render widgets',
+            'Flush diff',
+            'Await input'
+          ]}
+          state={listState}
+          highlightSymbol="▶ "
+        />
+      </Panel>
+      <Panel title="Progress">
+        <Gauge percent={72} />
+      </Panel>
+    </Row>
+
+    {/* Footer */}
+    <Panel p={1}>
+      <Label 
+        text="Run this file with tsx to see the rendered frame output." 
+        align="center" 
+      />
+    </Panel>
+  </Column>,
+);
+
+console.log(testBackendToString(state));
+```
+
+## Using terminalDrawJsx
+
+Render a single frame with JSX:
+
+<Tabs items={['Static', 'Dynamic']}>
+  <Tab value="Static">
+    ```tsx
+    import { terminalDrawJsx, Panel, Label } from 'terminui/jsx';
+
+    // Render static JSX
+    terminalDrawJsx(
+      terminal,
+      <Panel title="Static">
+        <Label text="This renders once" />
+      </Panel>
+    );
+    ```
+  </Tab>
+  <Tab value="Dynamic">
+    ```tsx
+    import { terminalDrawJsx, Panel, Label } from 'terminui/jsx';
+
+    // Render function that receives frame
+    terminalDrawJsx(
+      terminal,
+      (frame) => (
+        <Panel title="Dynamic">
+          <Label text={`Frame area: ${frame.area.width}x${frame.area.height}`} />
+        </Panel>
+      )
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Using terminalLoopJsx
+
+Render multiple frames for animations or live updates:
+
+<Tabs items={['Max Frames', 'Conditional']}>
+  <Tab value="Max Frames">
+    ```tsx
+    import { terminalLoopJsx, Panel, Gauge } from 'terminui/jsx';
+
+    // Render up to 100 frames
+    const result = terminalLoopJsx(
+      terminal,
+      (frame, tick) => (
+        <Panel title={`Frame ${tick}`}>
+          <Gauge percent={tick % 100} />
+        </Panel>
+      ),
+      { maxFrames: 100 }
+    );
+
+    console.log(`Rendered ${result.frames} frames`);
+    ```
+  </Tab>
+  <Tab value="Conditional">
+    ```tsx
+    import { terminalLoopJsx, Panel, Label } from 'terminui/jsx';
+
+    let running = true;
+
+    // Render until condition becomes false
+    const result = terminalLoopJsx(
+      terminal,
+      (frame, tick) => {
+        if (tick >= 50) {
+          running = false;
+        }
+        return (
+          <Panel title="Conditional Loop">
+            <Label text={`Tick: ${tick}`} />
+          </Panel>
+        );
+      },
+      { continueWhile: () => running }
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Styling with Shorthands
+
+Use shorthand props for quick styling:
+
+```tsx
+<Column gap={1}>
+  {/* Style shorthands: fg, bg, bold */}
+  <Label 
+    text="Colored text" 
+    fg={Color.Red} 
+    bg={Color.Black} 
+    bold 
+  />
+
+  {/* Block shorthands: border, title, padding */}
+  <Box border title="Container" p={2}>
+    <Label text="Padded content" />
+  </Box>
+
+  {/* Padding shorthands: p, px, py */}
+  <Panel title="Different Padding" px={3} py={1}>
+    <Label text="3 horizontal, 1 vertical" />
+  </Panel>
+</Column>
+```
+
+## Stateful Widgets
+
+Manage widget state for interactive UIs:
+
+### List with Selection
+
+```tsx
+import { createListState } from 'terminui';
+import { List, Panel, terminalDrawJsx } from 'terminui/jsx';
+
+const listState = createListState(0);  // start at first item
+
+terminalDrawJsx(
+  terminal,
+  <Panel title="Menu">
+    <List
+      items={['File', 'Edit', 'View', 'Help']}
+      state={listState}
+      highlightSymbol="▶ "
+    />
+  </Panel>
+);
+
+// Update selection
+listState.selected = 2;  // select "View"
+```
+
+### Table with Selection
+
+```tsx
+import { createTableState, lengthConstraint, fillConstraint } from 'terminui';
+import { Table, Panel, terminalDrawJsx } from 'terminui/jsx';
+
+const tableState = createTableState(1);  // start at second row
+
+terminalDrawJsx(
+  terminal,
+  <Panel title="Users">
+    <Table
+      rows={[
+        ['Alice', '42', 'admin'],
+        ['Bob', '37', 'user'],
+        ['Charlie', '29', 'user'],
+      ]}
+      widths={[
+        lengthConstraint(10),
+        lengthConstraint(5),
+        fillConstraint(1)
+      ]}
+      header={['Name', 'Age', 'Role']}
+      state={tableState}
+    />
+  </Panel>
+);
+```
+
+### Scrollbar
+
+```tsx
+import { createScrollbarState } from 'terminui';
+import { Scrollbar, Panel, terminalDrawJsx } from 'terminui/jsx';
+
+const scrollbarState = createScrollbarState(100, 25);
+scrollbarState.viewportContentLength = 20;
+scrollbarState.position = 10;
+
+terminalDrawJsx(
+  terminal,
+  <Panel title="Scrollable Content">
+    <Scrollbar 
+      orientation="verticalRight"
+      state={scrollbarState}
+    />
+  </Panel>
+);
+```
+
+## Layout Patterns
+
+### Three-Column Layout
+
+```tsx
+<Row constraints={[
+  fillConstraint(1),
+  fillConstraint(2),
+  fillConstraint(1)
+]} gap={1}>
+  <Panel title="Left Sidebar" />
+  <Panel title="Main Content" />
+  <Panel title="Right Sidebar" />
+</Row>
+```
+
+### Header/Body/Footer
+
+```tsx
+<Column constraints={[
+  lengthConstraint(3),   // header
+  fillConstraint(1),     // body
+  lengthConstraint(2)    // footer
+]}>
+  <Panel title="Header" />
+  <Panel title="Body" />
+  <Panel title="Footer" />
+</Column>
+```
+
+### Nested Grid
+
+```tsx
+<Column constraints={[
+  fillConstraint(1),
+  fillConstraint(1)
+]} gap={1}>
+  <Row constraints={[
+    fillConstraint(1),
+    fillConstraint(1)
+  ]} gap={1}>
+    <Panel title="Top Left" />
+    <Panel title="Top Right" />
+  </Row>
+  <Row constraints={[
+    fillConstraint(1),
+    fillConstraint(1)
+  ]} gap={1}>
+    <Panel title="Bottom Left" />
+    <Panel title="Bottom Right" />
+  </Row>
+</Column>
+```
+
+## Advanced Patterns
+
+### Custom Components
+
+Create reusable JSX components:
+
+```tsx
+import type { JsxComponent } from 'terminui/jsx';
+import { Panel, Label } from 'terminui/jsx';
+import { Color } from 'terminui';
+
+interface StatusProps {
+  readonly status: 'online' | 'offline' | 'error';
+  readonly message: string;
+}
+
+const StatusPanel: JsxComponent<StatusProps> = ({ status, message }) => {
+  const color = status === 'online' 
+    ? Color.Green 
+    : status === 'offline' 
+    ? Color.Gray 
+    : Color.Red;
+
+  return (
+    <Panel title={`Status: ${status}`} border>
+      <Label text={message} fg={color} bold />
+    </Panel>
+  );
+};
+
+// Usage
+terminalDrawJsx(
+  terminal,
+  <StatusPanel status="online" message="All systems operational" />
+);
+```
+
+### Conditional Rendering
+
+```tsx
+const hasError = true;
+
+terminalDrawJsx(
+  terminal,
+  <Column>
+    {hasError && (
+      <Panel title="Error" border>
+        <Label text="Something went wrong" fg={Color.Red} bold />
+      </Panel>
+    )}
+    <Panel title="Main Content">
+      <Label text="App content here" />
+    </Panel>
+  </Column>
+);
+```
+
+### List Mapping
+
+```tsx
+const items = ['First', 'Second', 'Third'];
+
+terminalDrawJsx(
+  terminal,
+  <Column gap={1}>
+    {items.map((item, i) => (
+      <Panel key={i} title={`Item ${i + 1}`}>
+        <Label text={item} />
+      </Panel>
+    ))}
+  </Column>
+);
+```
+
+## Troubleshooting
+
+### TypeScript Error: 'X' cannot be used as a JSX component
+
+If you see this error, check:
+
+1. **Use `.tsx` file extension** for JSX code
+2. **Configure JSX runtime** in `tsconfig.json`:
+   ```json
+   {
+     "compilerOptions": {
+       "jsx": "react-jsx",
+       "jsxImportSource": "terminui"
+     }
+   }
+   ```
+3. **Import from `terminui/jsx`** not `react`:
+   ```tsx
+   // ✅ Correct
+   import { Panel, Label } from 'terminui/jsx';
+   
+   // ❌ Wrong
+   import { Panel, Label } from 'react';
+   ```
+4. **Update to latest terminui** with JSX typing fixes
+
+### Per-file JSX Configuration
+
+If you can't modify `tsconfig.json`, use per-file pragmas:
+
+```tsx
+/** @jsxRuntime automatic */
+/** @jsxImportSource terminui */
+import { terminalDrawJsx, Panel, Label } from 'terminui/jsx';
+
+// Your JSX code here
+```
+
+### Missing JSX Components
+
+Make sure you're importing from the correct path:
+
+```tsx
+// ✅ Correct: JSX components
+import { Panel, Label, List, Gauge } from 'terminui/jsx';
+
+// ✅ Correct: Core utilities
+import { Color, lengthConstraint, fillConstraint } from 'terminui';
+
+// ❌ Wrong: Can't import JSX components from core
+import { Panel } from 'terminui';  // Won't work!
+```
+
+## Performance Tips
+
+1. **Use `terminalDrawJsx` for static UIs** — single render is faster
+2. **Minimize re-renders in loops** — only call `terminalLoopJsx` when you need animation
+3. **Leverage the diff renderer** — terminui only flushes changed cells
+4. **Prefer constraints over absolute sizes** — let the layout system optimize
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Component Reference" icon="shapes" href="/jsx/components">
+    Detailed props and types for every component
+  </Card>
+  <Card title="JSX Overview" icon="book" href="/jsx/overview">
+    Learn about the JSX API and when to use it
+  </Card>
+</CardGroup>

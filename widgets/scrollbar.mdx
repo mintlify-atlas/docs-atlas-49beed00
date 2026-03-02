@@ -1,0 +1,411 @@
+---
+title: Scrollbar
+description: Scrollbar position indicator widget
+---
+
+The **Scrollbar** widget displays a position indicator for scrollable content. It's a **stateful widget** that tracks content length, viewport size, and scroll position.
+
+## Visual Example
+
+```
+┌Content──────────────────────────────────────────────┐ █
+│ Line 1                                            │ █
+│ Line 2                                            │ ░
+│ Line 3                                            │ ░
+│ Line 4                                            │ ░
+│ Line 5                                            │ ░
+│ ...                                               │ ░
+└────────────────────────────────────────────────┘ █
+```
+
+## Basic Usage
+
+```typescript
+import {
+  createScrollbar,
+  createScrollbarState,
+  renderStatefulScrollbar,
+} from 'terminui';
+
+const scrollbar = createScrollbar('verticalRight');
+const state = createScrollbarState(100, 0);  // 100 lines of content
+state.viewportContentLength = 20;  // 20 lines visible
+
+frameRenderStatefulWidget(
+  frame,
+  renderStatefulScrollbar(scrollbar),
+  area,
+  state
+);
+```
+
+## State Management
+
+Scrollbar state tracks the content and viewport:
+
+```typescript
+interface ScrollbarState {
+  contentLength: number;         // Total content size
+  position: number;              // Current scroll position
+  viewportContentLength: number; // Visible content size
+}
+
+const state = createScrollbarState(100, 25);  // 100 items, start at 25
+state.viewportContentLength = 20;  // Show 20 items at a time
+
+// Update position as user scrolls
+state.position = 30;
+```
+
+### Field Descriptions
+
+- **contentLength**: Total number of items/lines in the content
+- **position**: Current scroll offset (0-based)
+- **viewportContentLength**: Number of items/lines visible at once
+
+<Note>
+The scrollbar automatically calculates thumb size and position based on the ratio of `viewportContentLength` to `contentLength`.
+</Note>
+
+## Orientations
+
+### Vertical Right (Default)
+
+Scrollbar on the right edge:
+
+```typescript
+const scrollbar = createScrollbar('verticalRight');
+```
+
+### Vertical Left
+
+Scrollbar on the left edge:
+
+```typescript
+const scrollbar = createScrollbar('verticalLeft');
+```
+
+### Horizontal Bottom
+
+Scrollbar on the bottom edge:
+
+```typescript
+const scrollbar = createScrollbar('horizontalBottom');
+```
+
+### Horizontal Top
+
+Scrollbar on the top edge:
+
+```typescript
+const scrollbar = createScrollbar('horizontalTop');
+```
+
+## Configuration Options
+
+### ScrollbarConfig
+
+```typescript
+interface ScrollbarConfig {
+  readonly orientation: ScrollbarOrientation;
+  readonly thumbStyle: Style;      // Thumb (indicator) style
+  readonly trackStyle: Style;      // Track (background) style
+  readonly beginSymbol?: string;   // Symbol at the start
+  readonly endSymbol?: string;     // Symbol at the end
+  readonly trackSymbol?: string;   // Track character
+  readonly thumbSymbol: string;    // Thumb character
+  readonly style: Style;           // Base style
+  readonly symbolSet: ScrollbarSet;
+}
+
+type ScrollbarOrientation =
+  | 'verticalRight'
+  | 'verticalLeft'
+  | 'horizontalBottom'
+  | 'horizontalTop';
+```
+
+## Symbol Sets
+
+Default symbol sets are provided for vertical and horizontal scrollbars:
+
+```typescript
+import { scrollbar } from 'terminui';
+
+// Vertical scrollbar symbols
+scrollbar.VERTICAL = {
+  track: '░',   // Light shade
+  thumb: '█',   // Full block
+  begin: '▲',   // Up arrow
+  end: '▼',     // Down arrow
+};
+
+// Horizontal scrollbar symbols
+scrollbar.HORIZONTAL = {
+  track: '░',   // Light shade
+  thumb: '█',   // Full block
+  begin: '◀',   // Left arrow
+  end: '▶',     // Right arrow
+};
+```
+
+## Custom Symbols
+
+```typescript
+const scrollbar = createScrollbar('verticalRight', {
+  thumbSymbol: '▓',    // Dark shade for thumb
+  trackSymbol: '░',    // Light shade for track
+  beginSymbol: '∆',    // Triangle up
+  endSymbol: '∇',      // Triangle down
+});
+```
+
+### Disable Begin/End Symbols
+
+```typescript
+const scrollbar = createScrollbar('verticalRight', {
+  beginSymbol: undefined,
+  endSymbol: undefined,
+});
+```
+
+## Styling
+
+```typescript
+import { styleFg, styleBg, createStyle, Color } from 'terminui';
+
+const scrollbar = createScrollbar('verticalRight', {
+  thumbStyle: styleFg(
+    styleBg(createStyle(), Color.Blue),
+    Color.White
+  ),
+  trackStyle: styleFg(createStyle(), Color.DarkGray),
+  style: styleFg(createStyle(), Color.Gray),  // Begin/end symbols
+});
+```
+
+## Calculating Scroll Position
+
+The scrollbar thumb size and position are automatically calculated:
+
+```typescript
+// Example: 100 lines of content, 20 visible, scrolled to line 40
+const state = createScrollbarState(100, 40);
+state.viewportContentLength = 20;
+
+// Thumb size: (20 / 100) * trackHeight
+// Thumb position: (40 / (100 - 20)) * (trackHeight - thumbSize)
+```
+
+### Manual Position Updates
+
+```typescript
+// Scroll down
+state.position = Math.min(
+  state.contentLength - state.viewportContentLength,
+  state.position + 1
+);
+
+// Scroll up
+state.position = Math.max(0, state.position - 1);
+
+// Scroll to top
+state.position = 0;
+
+// Scroll to bottom
+state.position = state.contentLength - state.viewportContentLength;
+```
+
+## Integration with List/Table
+
+Scrollbars are typically used alongside scrollable widgets:
+
+```typescript
+import {
+  createLayout,
+  lengthConstraint,
+  fillConstraint,
+  splitLayout,
+  createList,
+  createListState,
+  renderStatefulList,
+  createScrollbar,
+  createScrollbarState,
+  renderStatefulScrollbar,
+} from 'terminui';
+
+const items = Array.from({ length: 100 }, (_, i) => `Item ${i + 1}`);
+const listState = createListState(0);
+const scrollbarState = createScrollbarState(items.length, 0);
+
+terminalDraw(terminal, (frame) => {
+  // Split area: main content + scrollbar
+  const layout = createLayout(
+    [fillConstraint(1), lengthConstraint(1)],
+    { direction: 'horizontal' }
+  );
+  const [contentArea, scrollbarArea] = splitLayout(layout, frame.area);
+
+  // Render list
+  const list = createList(items);
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulList(list),
+    contentArea,
+    listState
+  );
+
+  // Update scrollbar state to match list
+  scrollbarState.position = listState.offset;
+  scrollbarState.viewportContentLength = contentArea.height;
+
+  // Render scrollbar
+  const scrollbar = createScrollbar('verticalRight');
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulScrollbar(scrollbar),
+    scrollbarArea,
+    scrollbarState
+  );
+});
+```
+
+## Complete Example
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderStatefulWidget,
+  frameRenderWidget,
+  createLayout,
+  lengthConstraint,
+  fillConstraint,
+  splitLayout,
+  createParagraph,
+  renderParagraph,
+  createScrollbar,
+  createScrollbarState,
+  renderStatefulScrollbar,
+  blockBordered,
+  createTitle,
+  uniformPadding,
+  rawText,
+  styleFg,
+  styleBg,
+  createStyle,
+  Color,
+} from 'terminui';
+
+const state = createTestBackendState(70, 20);
+const terminal = createTerminal(createTestBackend(state));
+
+// Long content
+const lines = Array.from({ length: 50 }, (_, i) => `Line ${i + 1}: Some content here.`);
+const content = rawText(lines.join('\n'));
+
+const scrollbarState = createScrollbarState(50, 0);
+
+terminalDraw(terminal, (frame) => {
+  // Split into content + scrollbar columns
+  const layout = createLayout(
+    [fillConstraint(1), lengthConstraint(1)],
+    { direction: 'horizontal' }
+  );
+  const [contentArea, scrollbarArea] = splitLayout(layout, frame.area);
+
+  // Render content with scrolling
+  const paragraph = createParagraph(content, {
+    block: blockBordered({
+      titles: [createTitle('Scrollable Content')],
+      borderType: 'rounded',
+      padding: uniformPadding(1),
+    }),
+    scroll: [scrollbarState.position, 0],  // Use scrollbar position
+  });
+  frameRenderWidget(frame, renderParagraph(paragraph), contentArea);
+
+  // Calculate viewport size (subtract borders and padding)
+  const innerHeight = contentArea.height - 4;  // 2 for borders, 2 for padding
+  scrollbarState.viewportContentLength = innerHeight;
+
+  // Render scrollbar
+  const scrollbar = createScrollbar('verticalRight', {
+    thumbStyle: styleFg(
+      styleBg(createStyle(), Color.Cyan),
+      Color.White
+    ),
+    trackStyle: styleFg(createStyle(), Color.DarkGray),
+  });
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulScrollbar(scrollbar),
+    scrollbarArea,
+    scrollbarState
+  );
+});
+
+// Simulate scrolling (in a real app, respond to key events)
+// scrollbarState.position = 10;
+```
+
+## Horizontal Scrollbar Example
+
+```typescript
+const scrollbarState = createScrollbarState(200, 0);  // 200 columns wide
+scrollbarState.viewportContentLength = 60;  // 60 columns visible
+
+terminalDraw(terminal, (frame) => {
+  const layout = createLayout([
+    fillConstraint(1),
+    lengthConstraint(1),  // Scrollbar row
+  ]);
+  const [contentArea, scrollbarArea] = splitLayout(layout, frame.area);
+
+  // Render wide content
+  const paragraph = createParagraph('Very wide content...', {
+    scroll: [0, scrollbarState.position],  // Horizontal scroll
+  });
+  frameRenderWidget(frame, renderParagraph(paragraph), contentArea);
+
+  // Render horizontal scrollbar
+  const scrollbar = createScrollbar('horizontalBottom');
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulScrollbar(scrollbar),
+    scrollbarArea,
+    scrollbarState
+  );
+});
+```
+
+<Note>
+Scrollbars are stateful widgets and require `frameRenderStatefulWidget` for rendering. The thumb size and position are calculated automatically based on the content and viewport sizes.
+</Note>
+
+## Type Reference
+
+```typescript
+// From src/widgets/scrollbar.ts
+function createScrollbar(
+  orientation: ScrollbarOrientation,
+  overrides?: Partial<Omit<ScrollbarConfig, 'orientation'>>
+): ScrollbarConfig;
+
+function createScrollbarState(
+  contentLength: number,
+  position?: number
+): ScrollbarState;
+
+function renderStatefulScrollbar(
+  config: ScrollbarConfig
+): StatefulWidgetRenderer<ScrollbarState>;
+
+type ScrollbarOrientation =
+  | 'verticalRight'
+  | 'verticalLeft'
+  | 'horizontalBottom'
+  | 'horizontalTop';
+```

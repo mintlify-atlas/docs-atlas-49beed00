@@ -1,0 +1,457 @@
+---
+title: BarChart
+description: Grouped bar chart widget for data comparison
+---
+
+The **BarChart** widget renders vertical or horizontal bar charts with support for grouped bars, custom styling, and labels. Perfect for visualizing comparative data and metrics.
+
+## Visual Example
+
+```
+┌Chart─────────────────────────────────────────────────┐
+│                                                      │
+│   ███   ███   ███                                    │
+│   ███   ███   ███                                    │
+│   ███   ███   ███                                    │
+│   ███   ███   ███                                    │
+│  Group A Group B Group C                            │
+└──────────────────────────────────────────────────────┘
+```
+
+## Basic Usage
+
+```typescript
+import {
+  createBar,
+  createBarGroup,
+  createBarChart,
+  renderBarChart,
+} from 'terminui';
+
+const chart = createBarChart(
+  [
+    createBarGroup([createBar(5), createBar(8), createBar(3)], 'Group A'),
+    createBarGroup([createBar(7), createBar(4), createBar(9)], 'Group B'),
+  ],
+  {
+    barWidth: 3,
+    direction: 'vertical',
+  }
+);
+
+frameRenderWidget(frame, renderBarChart(chart), area);
+```
+
+## Configuration Options
+
+### BarChartConfig
+
+```typescript
+interface BarChartConfig {
+  readonly data: readonly BarGroup[];
+  readonly block?: BlockConfig;
+  readonly barWidth: number;           // Width/height of each bar
+  readonly barGap: number;             // Space between bars in a group
+  readonly groupGap: number;           // Space between groups
+  readonly barStyle: Style;            // Default bar style
+  readonly valueStyle: Style;          // Value text style
+  readonly labelStyle: Style;          // Label text style
+  readonly style: Style;               // Background style
+  readonly max?: number;               // Override max value for scaling
+  readonly direction: 'vertical' | 'horizontal';
+}
+```
+
+## Bar and BarGroup
+
+### Bar
+
+```typescript
+interface Bar {
+  readonly value: number;
+  readonly label?: Line;        // Bar-specific label
+  readonly style: Style;        // Override bar color
+  readonly valueStyle: Style;   // Override value text style
+  readonly textValue?: string;  // Custom value display
+}
+
+const bar = createBar(42, {
+  label: rawLine('Sales'),
+  style: styleFg(createStyle(), Color.Green),
+  textValue: '$42K',
+});
+```
+
+### BarGroup
+
+```typescript
+interface BarGroup {
+  readonly label?: Line;         // Group label
+  readonly bars: readonly Bar[];
+}
+
+const group = createBarGroup(
+  [createBar(10), createBar(20), createBar(15)],
+  'Q1 2024'  // Group label
+);
+```
+
+## Direction
+
+### Vertical (Default)
+
+Bars grow upward from the bottom:
+
+```typescript
+const vertical = createBarChart(data, {
+  direction: 'vertical',
+  barWidth: 3,  // Width of each bar in columns
+});
+```
+
+**Layout**:
+- Bars grow upward
+- Value text below bars
+- Bar labels below values (if present)
+- Group labels at the bottom
+
+### Horizontal
+
+Bars grow left to right:
+
+```typescript
+const horizontal = createBarChart(data, {
+  direction: 'horizontal',
+  barWidth: 2,  // Height of each bar in rows
+});
+```
+
+**Layout**:
+- Bars grow to the right
+- Bar labels on the left (if present)
+- Value text after bars
+
+## Spacing
+
+### Bar Gap
+
+Space between bars within a group:
+
+```typescript
+const chart = createBarChart(data, {
+  barGap: 1,  // 1 column/row between bars (default)
+});
+
+const tight = createBarChart(data, {
+  barGap: 0,  // No gap, bars touch
+});
+
+const loose = createBarChart(data, {
+  barGap: 2,  // 2 columns/rows between bars
+});
+```
+
+### Group Gap
+
+Space between bar groups:
+
+```typescript
+const chart = createBarChart(data, {
+  groupGap: 0,  // No gap between groups (default)
+});
+
+const spaced = createBarChart(data, {
+  groupGap: 3,  // 3 columns/rows between groups
+});
+```
+
+## Styling Bars
+
+### Default Bar Style
+
+```typescript
+const chart = createBarChart(data, {
+  barStyle: styleFg(createStyle(), Color.Cyan),  // All bars cyan
+});
+```
+
+### Per-Bar Styling
+
+```typescript
+const group = createBarGroup([
+  createBar(5, { style: styleFg(createStyle(), Color.Green) }),
+  createBar(8, { style: styleFg(createStyle(), Color.Yellow) }),
+  createBar(3, { style: styleFg(createStyle(), Color.Red) }),
+]);
+```
+
+### Value Text Styling
+
+```typescript
+const chart = createBarChart(data, {
+  valueStyle: styleFg(createStyle(), Color.White),  // Default value style
+});
+
+const bar = createBar(42, {
+  valueStyle: styleFg(createStyle(), Color.Yellow),  // Override for this bar
+});
+```
+
+## Custom Value Display
+
+```typescript
+const bars = [
+  createBar(1250000, { textValue: '$1.25M' }),
+  createBar(2500000, { textValue: '$2.5M' }),
+  createBar(750000, { textValue: '$750K' }),
+];
+
+const chart = createBarChart([createBarGroup(bars, 'Revenue')], {
+  direction: 'vertical',
+  barWidth: 5,
+});
+```
+
+## Scaling
+
+### Auto-Scaling (Default)
+
+```typescript
+// Scales to the maximum value across all bars
+const chart = createBarChart(data);  // Auto-detects max
+```
+
+### Fixed Scaling
+
+```typescript
+// Force specific max value
+const chart = createBarChart(data, {
+  max: 100,  // Scale as if max is 100
+});
+```
+
+**Use cases**:
+- Consistent scaling across multiple charts
+- Showing headroom or capacity
+- Comparing charts with different data ranges
+
+## Labels
+
+### Group Labels
+
+```typescript
+const groups = [
+  createBarGroup(bars1, 'Q1'),
+  createBarGroup(bars2, 'Q2'),
+  createBarGroup(bars3, 'Q3'),
+];
+
+// In vertical mode: centered below each group
+// In horizontal mode: (not displayed for groups)
+```
+
+### Bar Labels
+
+```typescript
+const bars = [
+  createBar(10, { label: rawLine('Product A') }),
+  createBar(20, { label: rawLine('Product B') }),
+  createBar(15, { label: rawLine('Product C') }),
+];
+
+// In vertical mode: below each bar
+// In horizontal mode: left-aligned before each bar
+```
+
+### Label Styling
+
+```typescript
+const chart = createBarChart(data, {
+  labelStyle: styleFg(createStyle(), Color.Gray),
+});
+```
+
+## Complete Example: Vertical Chart
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderWidget,
+  createBar,
+  createBarGroup,
+  createBarChart,
+  renderBarChart,
+  blockBordered,
+  createTitle,
+  rawLine,
+  styleFg,
+  createStyle,
+  Color,
+} from 'terminui';
+
+const state = createTestBackendState(70, 20);
+const terminal = createTerminal(createTestBackend(state));
+
+terminalDraw(terminal, (frame) => {
+  const chart = createBarChart(
+    [
+      createBarGroup(
+        [
+          createBar(45, {
+            label: rawLine('Sales'),
+            style: styleFg(createStyle(), Color.Green),
+          }),
+          createBar(62, {
+            label: rawLine('Marketing'),
+            style: styleFg(createStyle(), Color.Yellow),
+          }),
+          createBar(38, {
+            label: rawLine('Support'),
+            style: styleFg(createStyle(), Color.Cyan),
+          }),
+        ],
+        'Q1 2024'
+      ),
+      createBarGroup(
+        [
+          createBar(52, { style: styleFg(createStyle(), Color.Green) }),
+          createBar(71, { style: styleFg(createStyle(), Color.Yellow) }),
+          createBar(44, { style: styleFg(createStyle(), Color.Cyan) }),
+        ],
+        'Q2 2024'
+      ),
+      createBarGroup(
+        [
+          createBar(68, { style: styleFg(createStyle(), Color.Green) }),
+          createBar(55, { style: styleFg(createStyle(), Color.Yellow) }),
+          createBar(49, { style: styleFg(createStyle(), Color.Cyan) }),
+        ],
+        'Q3 2024'
+      ),
+    ],
+    {
+      direction: 'vertical',
+      barWidth: 3,
+      barGap: 1,
+      groupGap: 2,
+      block: blockBordered({
+        titles: [createTitle('Quarterly Performance')],
+        borderType: 'rounded',
+      }),
+      max: 100,  // Scale to 100
+    }
+  );
+
+  frameRenderWidget(frame, renderBarChart(chart), frame.area);
+});
+```
+
+## Complete Example: Horizontal Chart
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderWidget,
+  createBar,
+  createBarGroup,
+  createBarChart,
+  renderBarChart,
+  blockBordered,
+  createTitle,
+  rawLine,
+  styleFg,
+  createStyle,
+  Color,
+} from 'terminui';
+
+const state = createTestBackendState(70, 20);
+const terminal = createTerminal(createTestBackend(state));
+
+terminalDraw(terminal, (frame) => {
+  const chart = createBarChart(
+    [
+      createBarGroup([
+        createBar(75, {
+          label: rawLine('JavaScript'),
+          style: styleFg(createStyle(), Color.Yellow),
+        }),
+      ]),
+      createBarGroup([
+        createBar(60, {
+          label: rawLine('Python'),
+          style: styleFg(createStyle(), Color.Cyan),
+        }),
+      ]),
+      createBarGroup([
+        createBar(45, {
+          label: rawLine('Rust'),
+          style: styleFg(createStyle(), Color.Red),
+        }),
+      ]),
+      createBarGroup([
+        createBar(30, {
+          label: rawLine('Go'),
+          style: styleFg(createStyle(), Color.Blue),
+        }),
+      ]),
+    ],
+    {
+      direction: 'horizontal',
+      barWidth: 2,
+      barGap: 1,
+      groupGap: 0,
+      block: blockBordered({
+        titles: [createTitle('Language Popularity')],
+        borderType: 'rounded',
+      }),
+      max: 100,
+    }
+  );
+
+  frameRenderWidget(frame, renderBarChart(chart), frame.area);
+});
+```
+
+## Unicode Block Characters
+
+BarCharts use unicode block characters for smooth rendering:
+
+**Vertical**: `▁▂▃▄▅▆▇█` (bottom-up blocks)
+
+**Horizontal**: `▏▎▍▌▋▊▉█` (left-to-right blocks)
+
+Bars are rendered at 8x resolution and mapped to the appropriate characters for sub-cell precision.
+
+<Note>
+BarCharts automatically handle partial fills using unicode block characters. The fill is calculated at 8x resolution for smooth visual appearance.
+</Note>
+
+## Type Reference
+
+```typescript
+// From src/widgets/barchart.ts
+function createBar(
+  value: number,
+  overrides?: Partial<Omit<Bar, 'value'>>
+): Bar;
+
+function createBarGroup(
+  bars: readonly Bar[],
+  label?: string | Line
+): BarGroup;
+
+function createBarChart(
+  data: readonly BarGroup[],
+  overrides?: Partial<Omit<BarChartConfig, 'data'>>
+): BarChartConfig;
+
+function renderBarChart(config: BarChartConfig): WidgetRenderer;
+
+type BarChartDirection = 'vertical' | 'horizontal';
+```

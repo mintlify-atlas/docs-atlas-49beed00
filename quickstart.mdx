@@ -1,80 +1,224 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with terminui in under 5 minutes
 ---
 
-## Get started in three steps
+Build your first terminal UI with terminui in minutes. This guide covers both the functional API and the JSX API approaches.
 
-Get your documentation site running locally and make your first customization.
+## Functional API quickstart
 
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+<Steps>
+  <Step title="Install terminui">
+    Install terminui using your preferred package manager:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    <CodeGroup>
+    ```bash npm
+    npm install terminui
+    ```
+    ```bash yarn
+    yarn add terminui
+    ```
+    ```bash pnpm
+    pnpm add terminui
+    ```
+    </CodeGroup>
+  </Step>
 
-### Step 2: Deploy your changes
+  <Step title="Create your first UI">
+    Create a simple bordered paragraph widget:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```typescript
+    import {
+      createTestBackendState,
+      createTestBackend,
+      testBackendToString,
+      createTerminal,
+      terminalDraw,
+      frameRenderWidget,
+      blockBordered,
+      createTitle,
+      createParagraph,
+      renderParagraph,
+    } from 'terminui';
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    // Set up a test backend
+    const state = createTestBackendState(60, 10);
+    const backend = createTestBackend(state);
+    const terminal = createTerminal(backend);
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    // Render a simple paragraph
+    terminalDraw(terminal, (frame) => {
+      const paragraph = createParagraph('Hello, terminui!', {
+        block: blockBordered({ titles: [createTitle('Greeting')] }),
+      });
+      frameRenderWidget(frame, renderParagraph(paragraph), frame.area);
+    });
 
-### Step 3: Go live
+    // Output the result
+    console.log(testBackendToString(state));
+    ```
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="See the output">
+    Run your code to see the rendered output:
+
+    ```
+    ┌Greeting──────────────────────────────────────────────┐
+    │Hello, terminui!                                      │
+    │                                                      │
+    │                                                      │
+    │                                                      │
+    │                                                      │
+    │                                                      │
+    │                                                      │
+    │                                                      │
+    └──────────────────────────────────────────────────────┘
+    ```
+
+    <Tip>
+      The TestBackend is perfect for examples and testing. For production TUIs, you'll want to implement a backend that writes to `process.stdout` and enters the alternate screen.
+    </Tip>
+  </Step>
+</Steps>
+
+## JSX API quickstart
+
+<Steps>
+  <Step title="Configure TypeScript for JSX">
+    Add JSX configuration to your `tsconfig.json`:
+
+    ```json
+    {
+      "compilerOptions": {
+        "jsx": "react-jsx",
+        "jsxImportSource": "terminui"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Create a JSX component">
+    Create a `.tsx` file with JSX components:
+
+    ```tsx
+    /** @jsxImportSource terminui */
+    import {
+      createTestBackendState,
+      createTestBackend,
+      createTerminal,
+      testBackendToString,
+      Color,
+    } from 'terminui';
+    import { terminalDrawJsx, Panel, Label } from 'terminui/jsx';
+
+    const state = createTestBackendState(40, 6);
+    const terminal = createTerminal(createTestBackend(state));
+
+    terminalDrawJsx(
+      terminal,
+      <Panel title="Hello JSX" p={1}>
+        <Label
+          text="terminal UI, React-like syntax"
+          fg={Color.Cyan}
+          bold
+          align="center"
+        />
+      </Panel>
+    );
+
+    console.log(testBackendToString(state));
+    ```
+  </Step>
+
+  <Step title="Run with tsx">
+    Execute your JSX file:
+
+    ```bash
+    npx tsx hello.tsx
+    ```
+
+    <Note>
+      You can use `tsx`, `ts-node`, or compile with `tsc` and run with `node`.
+    </Note>
+  </Step>
+</Steps>
+
+## Build a layout with widgets
+
+Create a more complex layout with multiple widgets:
+
+```typescript
+import {
+  createTerminal,
+  createTestBackend,
+  createTestBackendState,
+  terminalDraw,
+  frameRenderWidget,
+  frameRenderStatefulWidget,
+  createLayout,
+  splitLayout,
+  lengthConstraint,
+  fillConstraint,
+  createList,
+  createListState,
+  renderStatefulList,
+  gaugePercent,
+  renderGauge,
+  blockBordered,
+  createTitle,
+  testBackendToString,
+} from 'terminui';
+
+const state = createTestBackendState(60, 12);
+const terminal = createTerminal(createTestBackend(state));
+
+// Create stateful list
+const list = createList(['Overview', 'Metrics', 'Logs'], {
+  block: blockBordered({ titles: [createTitle('Menu')] }),
+});
+const listState = createListState(0); // First item selected
+
+// Create gauge
+const gauge = gaugePercent(42, {
+  block: blockBordered({ titles: [createTitle('Load')] }),
+});
+
+terminalDraw(terminal, (frame) => {
+  // Split the frame into two columns
+  const layout = createLayout(
+    [fillConstraint(1), fillConstraint(1)],
+    { direction: 'horizontal', spacing: { type: 'space', n: 1 } }
+  );
+  const [leftArea, rightArea] = splitLayout(layout, frame.area);
+
+  // Render list on the left
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulList(list),
+    leftArea,
+    listState
+  );
+
+  // Render gauge on the right
+  frameRenderWidget(frame, renderGauge(gauge), rightArea);
+});
+
+console.log(testBackendToString(state));
+```
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Layout system" icon="grid" href="/concepts/layout-system">
+    Learn about constraints and layout composition
+  </Card>
+  <Card title="Widgets" icon="shapes" href="/widgets/block">
+    Explore all 10+ built-in widgets
+  </Card>
+  <Card title="Style system" icon="palette" href="/concepts/style-system">
+    Add colors and modifiers to your UI
+  </Card>
+  <Card title="Examples" icon="code" href="/examples/kitchen-sink">
+    See complete working examples
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

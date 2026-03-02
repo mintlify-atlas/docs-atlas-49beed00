@@ -1,0 +1,310 @@
+---
+title: Rendering
+description: How terminui's double-buffered diff-based rendering works
+---
+
+terminui uses **double-buffered rendering** with **diff-based updates** to minimize terminal I/O and achieve optimal performance.
+
+## Double Buffering
+
+The terminal maintains two buffers that alternate between frames:
+
+```typescript
+interface Terminal {
+  buffers: readonly [Buffer, Buffer];
+  current: number; // Index of the current buffer (0 or 1)
+  // ...
+}
+```
+
+From `~/workspace/source/src/core/terminal.ts:34-42`
+
+### How It Works
+
+1. **Widgets render** into the current buffer
+2. **Diff calculation** compares current vs. previous buffer
+3. **Only changed cells** are sent to the backend
+4. **Buffers swap** for the next frame
+5. **Current buffer is reset** to blank cells
+
+```typescript
+const terminalDraw = (terminal: Terminal, renderFn: (frame: Frame) => void): CompletedFrame => {
+  const currentBuf = terminal.buffers[terminal.current] as Buffer;
+  const frame: Frame = {
+    buffer: currentBuf,
+    area: terminal.viewportArea,
+    count: terminal.frameCount,
+  };
+
+  renderFn(frame);
+
+  // Diff against previous buffer
+  const previousIdx = terminal.current === 0 ? 1 : 0;
+  const previousBuf = terminal.buffers[previousIdx] as Buffer;
+  const diff = bufferDiff(previousBuf, currentBuf);
+  terminal.backend.draw(diff);
+  terminal.backend.flush();
+
+  // Swap buffers
+  terminal.current = previousIdx;
+  resetBuffer(terminal.buffers[terminal.current] as Buffer);
+
+  terminal.frameCount++;
+
+  return {
+    buffer: currentBuf,
+    area: terminal.viewportArea,
+    count: terminal.frameCount - 1,
+  };
+};
+```
+
+From `~/workspace/source/src/core/terminal.ts:87-123`
+
+<Note>
+Each frame starts with a clean buffer. The previous frame's buffer is kept intact for diffing.
+</Note>
+
+## Diff Algorithm
+
+The `bufferDiff` function compares two buffers cell-by-cell and returns only the differences:
+
+```typescript
+interface CellDiff {
+  readonly x: number;
+  readonly y: number;
+  readonly cell: Cell;
+}
+
+const bufferDiff = (prev: Buffer, next: Buffer): readonly CellDiff[] => {
+  const diffs: CellDiff[] = [];
+  const { area } = next;
+
+  for (let y = area.y; y < area.y + area.height; y++) {
+    for (let x = area.x; x < area.x + area.width; x++) {
+      const idx = bufferIndex(next, x, y);
+      const prevCell = prev.content[idx];
+      const nextCell = next.content[idx];
+      if (prevCell === undefined || nextCell === undefined) {
+        continue;
+      }
+      if (!cellsEqual(prevCell, nextCell)) {
+        diffs.push({ x, y, cell: nextCell });
+      }
+    }
+  }
+  return diffs;
+};
+```
+
+From `~/workspace/source/src/core/buffer.ts:254-272`
+
+### Cell Equality
+
+Cells are compared by all their properties:
+
+```typescript
+const cellsEqual = (a: Cell, b: Cell): boolean =>
+  a.symbol === b.symbol &&
+  a.fg.type === b.fg.type &&
+  a.bg.type === b.bg.type &&
+  a.modifier === b.modifier &&
+  colorEqual(a.fg, b.fg) &&
+  colorEqual(a.bg, b.bg) &&
+  colorEqual(a.underlineColor, b.underlineColor);
+```
+
+From `~/workspace/source/src/core/buffer.ts:226-233`
+
+<Tip>
+If a cell hasn't changed between frames, it won't be redrawn. This makes animations and partial updates extremely efficient.
+</Tip>
+
+## Buffer Structure
+
+A buffer is a flat array of cells representing a 2D grid:
+
+```typescript
+interface Buffer {
+  readonly area: Rect;
+  readonly content: Cell[];
+}
+
+const createBuffer = (area: Rect, cell?: Cell): Buffer => {
+  const fill = cell ?? createCell();
+  const len = area.width * area.height;
+  const content: Cell[] = [];
+  for (let i = 0; i < len; i++) {
+    content.push({ ...fill });
+  }
+  return { area, content };
+};
+```
+
+From `~/workspace/source/src/core/buffer.ts:83-96`
+
+### Indexing
+
+Cells are stored in row-major order:
+
+```typescript
+const bufferIndex = (buffer: Buffer, x: number, y: number): number =>
+  (y - buffer.area.y) * buffer.area.width + (x - buffer.area.x);
+```
+
+From `~/workspace/source/src/core/buffer.ts:98-99`
+
+### Bounds Checking
+
+All buffer operations check bounds before accessing cells:
+
+```typescript
+const bufferInBounds = (buffer: Buffer, x: number, y: number): boolean => {
+  const { area } = buffer;
+  return x >= area.x && x < area.x + area.width && y >= area.y && y < area.y + area.height;
+};
+```
+
+From `~/workspace/source/src/core/buffer.ts:101-104`
+
+## Rendering Operations
+
+### Setting a Single Cell
+
+```typescript
+const bufferSetCell = (buffer: Buffer, x: number, y: number, cell: Cell): void => {
+  if (!bufferInBounds(buffer, x, y)) {
+    return;
+  }
+  buffer.content[bufferIndex(buffer, x, y)] = cell;
+};
+```
+
+From `~/workspace/source/src/core/buffer.ts:113-118`
+
+### Rendering Strings
+
+Strings are rendered with automatic wide character handling:
+
+```typescript
+const bufferSetString = (
+  buffer: Buffer,
+  x: number,
+  y: number,
+  str: string,
+  style: Style,
+): void => {
+  let cx = x;
+  for (const ch of str) {
+    if (!bufferInBounds(buffer, cx, y)) {
+      break;
+    }
+    const code = ch.codePointAt(0) ?? 0;
+    const w = charWidth(code);
+    const cell = cellSetStyle(createCell({ symbol: ch }), style);
+    buffer.content[bufferIndex(buffer, cx, y)] = cell;
+    cx += 1;
+
+    // For wide characters, fill the next cell with an empty placeholder
+    if (w === 2 && bufferInBounds(buffer, cx, y)) {
+      buffer.content[bufferIndex(buffer, cx, y)] = cellSetStyle(createCell({ symbol: '' }), style);
+      cx += 1;
+    }
+  }
+};
+```
+
+From `~/workspace/source/src/core/buffer.ts:120-144`
+
+<Note>
+Wide characters (like CJK characters) take up 2 cells. The second cell gets an empty placeholder to maintain proper spacing.
+</Note>
+
+### Applying Styles to Regions
+
+```typescript
+const bufferSetStyle = (buffer: Buffer, area: Rect, style: Style): void => {
+  const x0 = Math.max(area.x, buffer.area.x);
+  const y0 = Math.max(area.y, buffer.area.y);
+  const x1 = Math.min(area.x + area.width, buffer.area.x + buffer.area.width);
+  const y1 = Math.min(area.y + area.height, buffer.area.y + buffer.area.height);
+
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const idx = bufferIndex(buffer, x, y);
+      const existing = buffer.content[idx];
+      if (existing !== undefined) {
+        buffer.content[idx] = cellSetStyle(existing, style);
+      }
+    }
+  }
+};
+```
+
+From `~/workspace/source/src/core/buffer.ts:146-161`
+
+## Screen Modes
+
+### Primary Screen
+
+Renders directly to the terminal's primary screen. Output remains visible after the program exits.
+
+```typescript
+const state = createTestBackendState(80, 24);
+const backend = createTestBackend(state);
+const terminal = createTerminal(backend);
+
+terminalDraw(terminal, (frame) => {
+  // render widgets
+});
+
+console.log(testBackendToString(state));
+```
+
+Good for:
+- One-shot output
+- CLI tools
+- Logging
+
+### Alternate Screen
+
+Full-screen TUI applications use the alternate screen buffer. The screen is cleared when the app exits.
+
+```typescript
+// Enter alternate screen
+process.stdout.write('\x1b[?1049h');
+
+// Main loop
+while (running) {
+  terminalDraw(terminal, (frame) => {
+    // render UI
+  });
+  await waitForInput();
+}
+
+// Exit alternate screen
+process.stdout.write('\x1b[?1049l');
+```
+
+Good for:
+- Interactive TUIs
+- Full-screen dashboards
+- Applications like vim, htop
+
+<Tip>
+The double-buffered diff ensures minimal ANSI escape codes are written between frames — only changed cells are updated.
+</Tip>
+
+## Performance Characteristics
+
+- **O(width × height)** diff calculation per frame
+- **O(changed cells)** write operations to terminal
+- **Zero allocations** for unchanged cells
+- **Minimal I/O** — only diffs are flushed
+
+For a typical 80×24 terminal:
+- Full screen = 1,920 cells
+- Small update (e.g., cursor blink) = 1-2 cells
+- Partial update (e.g., scroll) = ~24 cells
+
+The diff algorithm ensures you only pay for what changed.

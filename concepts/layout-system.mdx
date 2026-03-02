@@ -1,0 +1,447 @@
+---
+title: Layout System
+description: Understanding terminui's constraint-based layout engine
+---
+
+terminui provides a powerful **constraint-based layout system** for dividing rectangular areas into smaller sections.
+
+## Core Concept
+
+The layout system uses **constraints** to split a rectangular area into multiple sub-areas, either vertically (rows) or horizontally (columns).
+
+```typescript
+const layout = createLayout([
+  lengthConstraint(3),       // exactly 3 rows
+  percentageConstraint(50),  // 50% of remaining space
+  fillConstraint(1),         // fill the rest
+]);
+
+const area = createRect(0, 0, 80, 24);
+const [header, body, footer] = splitLayout(layout, area);
+```
+
+## Layout Type
+
+```typescript
+interface Layout {
+  readonly direction: Direction;
+  readonly constraints: readonly Constraint[];
+  readonly margin: Margin;
+  readonly spacing: Spacing;
+}
+```
+
+From `~/workspace/source/src/core/layout.ts:269-274`
+
+### Creating Layouts
+
+```typescript
+const createLayout = (
+  constraints: readonly Constraint[],
+  overrides?: {
+    direction?: Direction;
+    margin?: Margin;
+    spacing?: Spacing;
+  },
+): Layout
+```
+
+From `~/workspace/source/src/core/layout.ts:278-290`
+
+## Directions
+
+```typescript
+type Direction = 'horizontal' | 'vertical';
+```
+
+From `~/workspace/source/src/core/layout.ts:159`
+
+- **`vertical`** (default): Splits into rows (top to bottom)
+- **`horizontal`**: Splits into columns (left to right)
+
+```typescript
+// Vertical layout - splits into rows
+const vLayout = createLayout([...constraints]);
+
+// Horizontal layout - splits into columns
+const hLayout = createLayout([...constraints], { direction: 'horizontal' });
+```
+
+## Constraint Types
+
+Constraints are **discriminated unions** — each has a `type` field:
+
+```typescript
+type Constraint =
+  | MinConstraint
+  | MaxConstraint
+  | LengthConstraint
+  | PercentageConstraint
+  | RatioConstraint
+  | FillConstraint;
+```
+
+From `~/workspace/source/src/core/layout.ts:193-199`
+
+### Length
+
+Fixed size in cells:
+
+```typescript
+interface LengthConstraint {
+  readonly type: 'length';
+  readonly value: number;
+}
+
+const lengthConstraint = (value: number): Constraint => ({
+  type: 'length',
+  value,
+});
+```
+
+From `~/workspace/source/src/core/layout.ts:172-174` and `~/workspace/source/src/core/layout.ts:211-214`
+
+**Example:**
+```typescript
+lengthConstraint(5)  // Exactly 5 cells (rows or columns)
+```
+
+### Percentage
+
+Percentage of available space:
+
+```typescript
+interface PercentageConstraint {
+  readonly type: 'percentage';
+  readonly value: number;
+}
+
+const percentageConstraint = (value: number): Constraint => ({
+  type: 'percentage',
+  value,
+});
+```
+
+From `~/workspace/source/src/core/layout.ts:177-180` and `~/workspace/source/src/core/layout.ts:216-219`
+
+**Example:**
+```typescript
+percentageConstraint(50)  // 50% of available space
+```
+
+### Ratio
+
+Fraction of available space:
+
+```typescript
+interface RatioConstraint {
+  readonly type: 'ratio';
+  readonly numerator: number;
+  readonly denominator: number;
+}
+
+const ratioConstraint = (numerator: number, denominator: number): Constraint => ({
+  type: 'ratio',
+  numerator,
+  denominator,
+});
+```
+
+From `~/workspace/source/src/core/layout.ts:182-186` and `~/workspace/source/src/core/layout.ts:221-225`
+
+**Example:**
+```typescript
+ratioConstraint(1, 3)  // 1/3 of available space
+ratioConstraint(2, 5)  // 2/5 of available space
+```
+
+### Min
+
+At least N cells:
+
+```typescript
+interface MinConstraint {
+  readonly type: 'min';
+  readonly value: number;
+}
+
+const minConstraint = (value: number): Constraint => ({
+  type: 'min',
+  value,
+});
+```
+
+From `~/workspace/source/src/core/layout.ts:162-165` and `~/workspace/source/src/core/layout.ts:201-204`
+
+**Example:**
+```typescript
+minConstraint(10)  // At least 10 cells
+```
+
+### Max
+
+At most N cells:
+
+```typescript
+interface MaxConstraint {
+  readonly type: 'max';
+  readonly value: number;
+}
+
+const maxConstraint = (value: number): Constraint => ({
+  type: 'max',
+  value,
+});
+```
+
+From `~/workspace/source/src/core/layout.ts:167-170` and `~/workspace/source/src/core/layout.ts:206-209`
+
+**Example:**
+```typescript
+maxConstraint(20)  // At most 20 cells
+```
+
+### Fill
+
+Fills remaining space with optional weight:
+
+```typescript
+interface FillConstraint {
+  readonly type: 'fill';
+  readonly value: number; // weight
+}
+
+const fillConstraint = (value: number): Constraint => ({
+  type: 'fill',
+  value,
+});
+```
+
+From `~/workspace/source/src/core/layout.ts:188-191` and `~/workspace/source/src/core/layout.ts:227-230`
+
+**Example:**
+```typescript
+fillConstraint(1)  // Fill with weight 1
+fillConstraint(2)  // Fill with weight 2 (gets 2x space vs weight 1)
+```
+
+<Note>
+Multiple `fillConstraint` items divide remaining space proportionally by weight.
+</Note>
+
+## Splitting Layouts
+
+The `splitLayout` function takes a layout and an area, and returns an array of rectangles:
+
+```typescript
+const splitLayout = (layout: Layout, area: Rect): readonly Rect[]
+```
+
+From `~/workspace/source/src/core/layout.ts:325`
+
+### Algorithm
+
+1. **Apply margins** to get inner area
+2. **Calculate spacing** between sections
+3. **First pass**: Resolve all non-Fill constraints
+4. **Second pass**: Distribute remaining space among Fill constraints
+5. **Clamp sizes** to available space
+6. **Build result rects** with proper offsets
+
+```typescript
+const splitLayout = (layout: Layout, area: Rect): readonly Rect[] => {
+  if (layout.constraints.length === 0) {
+    return [];
+  }
+
+  const inner = rectInner(area, layout.margin);
+  const totalAvailable = layout.direction === 'horizontal' ? inner.width : inner.height;
+  const count = layout.constraints.length;
+  const gap = spacingAmount(layout.spacing);
+  const totalGaps = count > 1 ? gap * (count - 1) : 0;
+  const availableForConstraints = Math.max(0, totalAvailable - totalGaps);
+
+  // First pass: resolve non-Fill constraints
+  const sizes: number[] = [];
+  let usedSpace = 0;
+  let fillCount = 0;
+  let fillWeightSum = 0;
+
+  for (const constraint of layout.constraints) {
+    if (constraint.type === 'fill') {
+      sizes.push(0);
+      fillCount++;
+      fillWeightSum += Math.max(1, constraint.value);
+    } else {
+      const size = resolveSize(constraint, availableForConstraints);
+      sizes.push(size);
+      usedSpace += size;
+    }
+  }
+
+  // Second pass: distribute remaining space among Fill constraints
+  if (fillCount > 0) {
+    const remaining = Math.max(0, availableForConstraints - usedSpace);
+    let distributed = 0;
+
+    for (let i = 0; i < count; i++) {
+      const constraint = layout.constraints[i];
+      if (constraint === undefined) {
+        continue;
+      }
+      if (constraint.type !== 'fill') {
+        continue;
+      }
+
+      const weight = Math.max(1, constraint.value);
+      const share = Math.floor((remaining * weight) / fillWeightSum);
+      sizes[i] = share;
+      distributed += share;
+    }
+
+    // Give leftover pixels to the last Fill constraint
+    const leftover = remaining - distributed;
+    if (leftover > 0) {
+      for (let i = count - 1; i >= 0; i--) {
+        const constraint = layout.constraints[i];
+        if (constraint === undefined) {
+          continue;
+        }
+        if (constraint.type !== 'fill') {
+          continue;
+        }
+        sizes[i] = (sizes[i] ?? 0) + leftover;
+        break;
+      }
+    }
+  }
+
+  // Clamp sizes so total does not exceed available space
+  let totalUsed = 0;
+  for (let i = 0; i < count; i++) {
+    const size = sizes[i] ?? 0;
+    const clamped = Math.max(0, Math.min(size, availableForConstraints - totalUsed));
+    sizes[i] = clamped;
+    totalUsed += clamped;
+  }
+
+  // Build result rects
+  const results: Rect[] = [];
+  let offset = 0;
+
+  for (let i = 0; i < count; i++) {
+    const size = sizes[i] ?? 0;
+
+    if (layout.direction === 'horizontal') {
+      results.push(createRect(inner.x + offset, inner.y, size, inner.height));
+    } else {
+      results.push(createRect(inner.x, inner.y + offset, inner.width, size));
+    }
+
+    offset += size + gap;
+  }
+
+  return results;
+};
+```
+
+From `~/workspace/source/src/core/layout.ts:325-418`
+
+## Examples
+
+### Three-Row Layout
+
+```typescript
+const layout = createLayout([
+  lengthConstraint(3),   // header: 3 rows
+  fillConstraint(1),     // body: fill remaining
+  lengthConstraint(1),   // footer: 1 row
+]);
+
+const area = createRect(0, 0, 80, 24);
+const [header, body, footer] = splitLayout(layout, area);
+```
+
+Result:
+- Header: 3 rows
+- Body: 20 rows (24 - 3 - 1)
+- Footer: 1 row
+
+### Two-Column Layout
+
+```typescript
+const layout = createLayout(
+  [
+    percentageConstraint(30),  // sidebar: 30%
+    fillConstraint(1),         // main: fill
+  ],
+  { direction: 'horizontal' },
+);
+
+const area = createRect(0, 0, 80, 24);
+const [sidebar, main] = splitLayout(layout, area);
+```
+
+Result:
+- Sidebar: 24 columns (30% of 80)
+- Main: 56 columns (remaining)
+
+### Weighted Fill
+
+```typescript
+const layout = createLayout([
+  fillConstraint(1),  // 1/3 of space
+  fillConstraint(2),  // 2/3 of space
+]);
+
+const area = createRect(0, 0, 60, 10);
+const [left, right] = splitLayout(layout, area);
+```
+
+Result:
+- Left: 20 columns (weight 1)
+- Right: 40 columns (weight 2)
+
+### Margins and Spacing
+
+```typescript
+import { createMargin } from 'terminui';
+
+const layout = createLayout(
+  [fillConstraint(1), fillConstraint(1)],
+  {
+    margin: createMargin(1, 2),  // 1 cell vertical, 2 cells horizontal
+    spacing: { type: 'space', value: 1 },  // 1 cell gap between sections
+  },
+);
+```
+
+<Tip>
+Constraints can be nested — split an area into sections, then split each section further with new layouts.
+</Tip>
+
+## Rect Utilities
+
+Working with rectangles:
+
+```typescript
+// Create a rect
+const rect = createRect(x, y, width, height);
+
+// Apply margins
+const inner = rectInner(rect, margin);  // Shrink by margin
+const outer = rectOuter(rect, margin);  // Expand by margin
+
+// Intersection
+const overlap = rectIntersection(rectA, rectB);
+
+// Union
+const combined = rectUnion(rectA, rectB);
+
+// Check if point is inside
+if (rectContains(rect, { x: 10, y: 5 })) {
+  // ...
+}
+```
+
+From `~/workspace/source/src/core/layout.ts:58-127`

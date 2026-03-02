@@ -1,0 +1,319 @@
+---
+title: Tabs
+description: Horizontal tab selection widget
+---
+
+The **Tabs** widget displays a horizontal row of selectable tabs with customizable dividers and padding. Perfect for navigation and view switching.
+
+## Visual Example
+
+```
+ Dashboard  Logs  Settings
+ ─────────────────────────────────────────────────
+ Dashboard content displayed here
+```
+
+## Basic Usage
+
+```typescript
+import { createTabs, renderTabs } from 'terminui';
+
+const tabs = createTabs(['Dashboard', 'Logs', 'Settings'], {
+  selected: 0,
+  highlightStyle: styleFg(createStyle(), Color.Yellow),
+});
+
+frameRenderWidget(frame, renderTabs(tabs), area);
+```
+
+## Configuration Options
+
+### TabsConfig
+
+```typescript
+interface TabsConfig {
+  readonly titles: readonly Line[];
+  readonly selected?: number;       // Index of selected tab
+  readonly block?: BlockConfig;
+  readonly style: Style;            // Base style
+  readonly highlightStyle: Style;   // Selected tab style
+  readonly divider: Span;           // Between tabs
+  readonly paddingLeft: Span;       // Left of each tab
+  readonly paddingRight: Span;      // Right of each tab
+}
+```
+
+## Selection
+
+Highlight the active tab:
+
+```typescript
+// First tab selected (index 0)
+const tabs1 = createTabs(['Home', 'Profile', 'Settings'], {
+  selected: 0,
+  highlightStyle: styleFg(createStyle(), Color.Cyan),
+});
+
+// Second tab selected
+const tabs2 = createTabs(['Home', 'Profile', 'Settings'], {
+  selected: 1,
+});
+
+// No selection
+const tabs3 = createTabs(['Home', 'Profile', 'Settings'], {
+  selected: undefined,
+});
+```
+
+## Custom Dividers
+
+Customize the separator between tabs:
+
+```typescript
+import { createSpan } from 'terminui';
+
+// Pipe divider (default: ' | ')
+const tabs1 = createTabs(titles, {
+  divider: createSpan(' | '),
+});
+
+// Bullet divider
+const tabs2 = createTabs(titles, {
+  divider: createSpan(' • '),
+});
+
+// Arrow divider
+const tabs3 = createTabs(titles, {
+  divider: createSpan(' › '),
+});
+
+// No divider
+const tabs4 = createTabs(titles, {
+  divider: createSpan(''),
+});
+```
+
+## Tab Padding
+
+Add spacing around each tab:
+
+```typescript
+// Default padding: ' ' on each side
+const tabs1 = createTabs(titles, {
+  paddingLeft: createSpan(' '),
+  paddingRight: createSpan(' '),
+});
+
+// More padding
+const tabs2 = createTabs(titles, {
+  paddingLeft: createSpan('  '),
+  paddingRight: createSpan('  '),
+});
+
+// No padding
+const tabs3 = createTabs(titles, {
+  paddingLeft: createSpan(''),
+  paddingRight: createSpan(''),
+});
+
+// Asymmetric padding
+const tabs4 = createTabs(titles, {
+  paddingLeft: createSpan(' '),
+  paddingRight: createSpan('   '),
+});
+```
+
+## Styled Tabs
+
+Apply custom styles:
+
+```typescript
+import { styleFg, styleBg, styleAddModifier, createStyle, Color, Modifier } from 'terminui';
+
+const tabs = createTabs(['File', 'Edit', 'View'], {
+  selected: 0,
+  style: styleFg(createStyle(), Color.Gray),
+  highlightStyle: styleAddModifier(
+    styleFg(styleBg(createStyle(), Color.Blue), Color.White),
+    Modifier.BOLD
+  ),
+});
+```
+
+## Rich Tab Titles
+
+Use `Line` objects for styled tab titles:
+
+```typescript
+import { rawLine, createLine, createSpan, styleFg } from 'terminui';
+
+const tabs = createTabs(
+  [
+    createLine([createSpan('⌂ Home', styleFg(createStyle(), Color.Cyan))]),
+    createLine([createSpan('⚙ Settings', styleFg(createStyle(), Color.Yellow))]),
+    rawLine('Help'),
+  ],
+  {
+    selected: 0,
+  }
+);
+```
+
+## With Block Border
+
+Wrap tabs in a bordered block:
+
+```typescript
+const tabs = createTabs(['Overview', 'Details', 'History'], {
+  selected: 0,
+  block: blockBordered({
+    titles: [createTitle('Navigation')],
+    borderType: 'rounded',
+  }),
+  highlightStyle: styleFg(createStyle(), Color.Yellow),
+});
+```
+
+## Interactive Tabs
+
+```typescript
+let selectedTab = 0;
+const tabTitles = ['Dashboard', 'Analytics', 'Reports', 'Settings'];
+
+terminalLoop(
+  terminal,
+  (frame, tick) => {
+    const tabs = createTabs(tabTitles, {
+      selected: selectedTab,
+      highlightStyle: styleFg(
+        styleBg(createStyle(), Color.Blue),
+        Color.White
+      ),
+    });
+
+    frameRenderWidget(frame, renderTabs(tabs), frame.area);
+  },
+  { maxFrames: 100 }
+);
+
+// Handle key input (pseudo-code)
+// onKeyLeft(): selectedTab = Math.max(0, selectedTab - 1)
+// onKeyRight(): selectedTab = Math.min(tabTitles.length - 1, selectedTab + 1)
+```
+
+## Complete Example
+
+```typescript
+import {
+  createTestBackendState,
+  createTestBackend,
+  createTerminal,
+  terminalDraw,
+  frameRenderWidget,
+  createLayout,
+  lengthConstraint,
+  fillConstraint,
+  splitLayout,
+  createTabs,
+  renderTabs,
+  createParagraph,
+  renderParagraph,
+  blockBordered,
+  createSpan,
+  styleFg,
+  styleBg,
+  styleAddModifier,
+  createStyle,
+  Color,
+  Modifier,
+} from 'terminui';
+
+const state = createTestBackendState(70, 20);
+const terminal = createTerminal(createTestBackend(state));
+
+const selectedTab = 1;
+const tabTitles = ['Dashboard', 'Logs', 'Settings', 'Help'];
+const tabContent = [
+  'Dashboard view: System metrics and overview',
+  'Logs view: Recent application logs and events',
+  'Settings view: Configure application preferences',
+  'Help view: Documentation and support resources',
+];
+
+terminalDraw(terminal, (frame) => {
+  const layout = createLayout([
+    lengthConstraint(3),   // Tabs
+    fillConstraint(1),     // Content
+  ]);
+
+  const [tabArea, contentArea] = splitLayout(layout, frame.area);
+
+  // Render tabs
+  const tabs = createTabs(tabTitles, {
+    selected: selectedTab,
+    style: styleFg(createStyle(), Color.Gray),
+    highlightStyle: styleAddModifier(
+      styleFg(styleBg(createStyle(), Color.Cyan), Color.Black),
+      Modifier.BOLD
+    ),
+    divider: createSpan(' | '),
+    paddingLeft: createSpan(' '),
+    paddingRight: createSpan(' '),
+  });
+  frameRenderWidget(frame, renderTabs(tabs), tabArea);
+
+  // Render selected tab content
+  const content = createParagraph(
+    tabContent[selectedTab] ?? 'No content',
+    {
+      block: blockBordered({ borderType: 'plain' }),
+      wrap: { trim: true },
+    }
+  );
+  frameRenderWidget(frame, renderParagraph(content), contentArea);
+});
+```
+
+## Layout Integration
+
+Combine tabs with other widgets:
+
+```typescript
+const layout = createLayout([
+  lengthConstraint(1),   // Tabs row
+  fillConstraint(1),     // Main content
+  lengthConstraint(3),   // Footer
+]);
+
+const [tabsArea, mainArea, footerArea] = splitLayout(layout, frame.area);
+
+// Render tabs in top row
+frameRenderWidget(frame, renderTabs(tabs), tabsArea);
+
+// Render content based on selected tab
+switch (selectedTab) {
+  case 0:
+    frameRenderWidget(frame, renderDashboard(), mainArea);
+    break;
+  case 1:
+    frameRenderWidget(frame, renderLogs(), mainArea);
+    break;
+  // ...
+}
+```
+
+<Note>
+Tabs are rendered on a single row. If tab titles exceed the available width, they will be truncated. Consider using shorter titles or abbreviations for narrow viewports.
+</Note>
+
+## Type Reference
+
+```typescript
+// From src/widgets/tabs.ts
+function createTabs(
+  titles: readonly (string | Line)[],
+  overrides?: Partial<Omit<TabsConfig, 'titles'>>
+): TabsConfig;
+
+function renderTabs(config: TabsConfig): WidgetRenderer;
+```

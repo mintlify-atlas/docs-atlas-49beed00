@@ -1,0 +1,442 @@
+---
+title: Widget renderers
+description: Widget rendering API and patterns
+---
+
+Widget renderers are pure functions that draw UI elements to a buffer within a given rectangular area. terminui provides two types of widget renderers: stateless and stateful.
+
+## Core types
+
+### WidgetRenderer
+
+A stateless widget renderer that takes an area and buffer:
+
+```typescript
+type WidgetRenderer = (area: Rect, buf: Buffer) => void;
+```
+
+<ParamField path="area" type="Rect" required>
+  The rectangular area to render within
+</ParamField>
+
+<ParamField path="buf" type="Buffer" required>
+  The buffer to draw into
+</ParamField>
+
+### StatefulWidgetRenderer
+
+A stateful widget renderer that also accepts and may mutate state:
+
+```typescript
+type StatefulWidgetRenderer<S> = (area: Rect, buf: Buffer, state: S) => void;
+```
+
+<ParamField path="area" type="Rect" required>
+  The rectangular area to render within
+</ParamField>
+
+<ParamField path="buf" type="Buffer" required>
+  The buffer to draw into
+</ParamField>
+
+<ParamField path="state" type="S" required>
+  Mutable state object specific to the widget type
+</ParamField>
+
+## Rendering pattern
+
+All widgets follow the same pattern:
+
+1. **Create** - Call a `create*` function with configuration
+2. **Render** - Call a `render*` function to get a `WidgetRenderer`
+3. **Draw** - Use `frameRenderWidget` or `frameRenderStatefulWidget` to invoke the renderer
+
+**Example (stateless widget):**
+
+```typescript
+import {
+  createTerminal,
+  createTestBackend,
+  createTestBackendState,
+  terminalDraw,
+  frameRenderWidget,
+  createParagraph,
+  renderParagraph,
+  blockBordered,
+  createTitle,
+} from 'terminui';
+
+const state = createTestBackendState(60, 10);
+const terminal = createTerminal(createTestBackend(state));
+
+terminalDraw(terminal, (frame) => {
+  // 1. Create widget
+  const paragraph = createParagraph('Hello, terminui!', {
+    block: blockBordered({ titles: [createTitle('Greeting')] }),
+  });
+  
+  // 2. Render to get WidgetRenderer
+  const renderer = renderParagraph(paragraph);
+  
+  // 3. Draw using frame
+  frameRenderWidget(frame, renderer, frame.area);
+});
+```
+
+**Example (stateful widget):**
+
+```typescript
+import {
+  createList,
+  createListState,
+  renderStatefulList,
+  frameRenderStatefulWidget,
+} from 'terminui';
+
+const list = createList(['Item 1', 'Item 2', 'Item 3']);
+const listState = createListState(0); // selected index
+
+terminalDraw(terminal, (frame) => {
+  const renderer = renderStatefulList(list);
+  frameRenderStatefulWidget(frame, renderer, frame.area, listState);
+});
+
+// Update state between frames
+listState.selected = 1;
+```
+
+## Stateless widget renderers
+
+### Block
+
+Container with borders, titles, and padding.
+
+```typescript
+function renderBlock(block: BlockConfig): WidgetRenderer
+```
+
+See [Block widget](/widgets/block) for details.
+
+### Paragraph
+
+Text display with wrapping, alignment, and scrolling.
+
+```typescript
+function renderParagraph(paragraph: ParagraphConfig): WidgetRenderer
+```
+
+See [Paragraph widget](/widgets/paragraph) for details.
+
+### Gauge
+
+Progress bar with unicode or ASCII rendering.
+
+```typescript
+function renderGauge(gauge: GaugeConfig): WidgetRenderer
+```
+
+See [Gauge widget](/widgets/gauge) for details.
+
+### LineGauge
+
+Compact single-line progress indicator.
+
+```typescript
+function renderLineGauge(gauge: LineGaugeConfig): WidgetRenderer
+```
+
+See [Gauge widget](/widgets/gauge) for details.
+
+### Tabs
+
+Horizontal tab selection display.
+
+```typescript
+function renderTabs(tabs: TabsConfig): WidgetRenderer
+```
+
+See [Tabs widget](/widgets/tabs) for details.
+
+### Sparkline
+
+Inline data visualization using unicode characters.
+
+```typescript
+function renderSparkline(sparkline: SparklineConfig): WidgetRenderer
+```
+
+See [Sparkline widget](/widgets/sparkline) for details.
+
+### BarChart
+
+Grouped bar charts with vertical or horizontal orientation.
+
+```typescript
+function renderBarChart(chart: BarChartConfig): WidgetRenderer
+```
+
+See [BarChart widget](/widgets/barchart) for details.
+
+### Clear
+
+Clears a rectangular area by filling with spaces.
+
+```typescript
+function renderClear(): WidgetRenderer
+```
+
+**Example:**
+
+```typescript
+import { frameRenderWidget, renderClear } from 'terminui';
+
+terminalDraw(terminal, (frame) => {
+  frameRenderWidget(frame, renderClear(), frame.area);
+});
+```
+
+## Stateful widget renderers
+
+Stateful widgets maintain state between renders (e.g., selection, scroll position).
+
+### List
+
+Vertical scrollable list with selection.
+
+```typescript
+function renderStatefulList(list: ListConfig): StatefulWidgetRenderer<ListState>
+```
+
+**State type:**
+
+```typescript
+interface ListState {
+  offset: number;
+  selected?: number;
+}
+```
+
+<ResponseField name="offset" type="number">
+  Scroll offset (number of items scrolled past the top)
+</ResponseField>
+
+<ResponseField name="selected" type="number | undefined">
+  Index of the currently selected item
+</ResponseField>
+
+**Example:**
+
+```typescript
+import {
+  createList,
+  createListState,
+  renderStatefulList,
+  frameRenderStatefulWidget,
+} from 'terminui';
+
+const list = createList(['Option 1', 'Option 2', 'Option 3']);
+const listState = createListState(0); // start with first item selected
+
+terminalDraw(terminal, (frame) => {
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulList(list),
+    frame.area,
+    listState
+  );
+});
+
+// Navigate: increment selected index
+listState.selected = (listState.selected ?? 0) + 1;
+```
+
+See [List widget](/widgets/list) for details.
+
+### Table
+
+Grid data display with row selection and scrolling.
+
+```typescript
+function renderStatefulTable(table: TableConfig): StatefulWidgetRenderer<TableState>
+```
+
+**State type:**
+
+```typescript
+interface TableState {
+  offset: number;
+  selected?: number;
+}
+```
+
+<ResponseField name="offset" type="number">
+  Scroll offset (number of rows scrolled past the top)
+</ResponseField>
+
+<ResponseField name="selected" type="number | undefined">
+  Index of the currently selected row
+</ResponseField>
+
+**Example:**
+
+```typescript
+import {
+  createTable,
+  createRow,
+  createTableState,
+  renderStatefulTable,
+  frameRenderStatefulWidget,
+  lengthConstraint,
+  fillConstraint,
+} from 'terminui';
+
+const table = createTable(
+  [
+    createRow(['Alice', '42', 'admin']),
+    createRow(['Bob', '37', 'user']),
+  ],
+  [lengthConstraint(10), lengthConstraint(5), fillConstraint(1)],
+  {
+    header: createRow(['Name', 'Age', 'Role']),
+  }
+);
+
+const tableState = createTableState(0);
+
+terminalDraw(terminal, (frame) => {
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulTable(table),
+    frame.area,
+    tableState
+  );
+});
+```
+
+See [Table widget](/widgets/table) for details.
+
+### Scrollbar
+
+Position indicator for scrollable content.
+
+```typescript
+function renderStatefulScrollbar(
+  scrollbar: ScrollbarConfig
+): StatefulWidgetRenderer<ScrollbarState>
+```
+
+**State type:**
+
+```typescript
+interface ScrollbarState {
+  contentLength: number;
+  position: number;
+  viewportContentLength: number;
+}
+```
+
+<ResponseField name="contentLength" type="number">
+  Total length of scrollable content
+</ResponseField>
+
+<ResponseField name="position" type="number">
+  Current scroll position
+</ResponseField>
+
+<ResponseField name="viewportContentLength" type="number">
+  Length of visible viewport
+</ResponseField>
+
+**Example:**
+
+```typescript
+import {
+  createScrollbar,
+  createScrollbarState,
+  renderStatefulScrollbar,
+  frameRenderStatefulWidget,
+} from 'terminui';
+
+const scrollbar = createScrollbar('verticalRight');
+const scrollbarState = createScrollbarState(100); // 100 items total
+scrollbarState.position = 25; // scrolled to item 25
+scrollbarState.viewportContentLength = 10; // 10 items visible
+
+terminalDraw(terminal, (frame) => {
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulScrollbar(scrollbar),
+    frame.area,
+    scrollbarState
+  );
+});
+```
+
+See [Scrollbar widget](/widgets/scrollbar) for details.
+
+## Creating custom widgets
+
+You can create your own widgets by writing functions that return `WidgetRenderer`:
+
+```typescript
+import type { WidgetRenderer } from 'terminui';
+import { bufferSetString, createStyle, styleFg, Color } from 'terminui';
+
+function renderCustomWidget(text: string): WidgetRenderer {
+  return (area, buf) => {
+    // Draw text at the top-left of the area
+    bufferSetString(
+      buf,
+      area.x,
+      area.y,
+      text,
+      styleFg(createStyle(), Color.Cyan)
+    );
+  };
+}
+
+// Use it like any other widget
+terminalDraw(terminal, (frame) => {
+  frameRenderWidget(frame, renderCustomWidget('Hello!'), frame.area);
+});
+```
+
+For stateful widgets:
+
+```typescript
+import type { StatefulWidgetRenderer } from 'terminui';
+
+interface MyWidgetState {
+  counter: number;
+}
+
+function renderStatefulCustomWidget(): StatefulWidgetRenderer<MyWidgetState> {
+  return (area, buf, state) => {
+    bufferSetString(buf, area.x, area.y, `Count: ${state.counter}`);
+  };
+}
+
+const myState = { counter: 0 };
+
+terminalDraw(terminal, (frame) => {
+  frameRenderStatefulWidget(
+    frame,
+    renderStatefulCustomWidget(),
+    frame.area,
+    myState
+  );
+});
+
+// Update state between frames
+myState.counter++;
+```
+
+<Tip>
+  Widget renderers are pure functions. Keep widget configuration immutable and only mutate state objects for stateful widgets.
+</Tip>
+
+## See also
+
+- [Terminal API](/api/terminal) - Frame rendering functions
+- [Buffer API](/api/buffer) - Low-level buffer operations
+- [Widgets](/widgets/block) - Built-in widget documentation
