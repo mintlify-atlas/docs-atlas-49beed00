@@ -1,0 +1,141 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "terminui",
+  "projectDescription": "A fast, functional TypeScript library for building terminal user interfaces with double-buffered rendering.",
+  "theme": "aspen",
+  "primaryColor": "#00d9ff",
+  "lightColor": "#4de8ff",
+  "darkColor": "#00a8cc",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/rendering",
+              "concepts/layout-system",
+              "concepts/style-system"
+            ]
+          },
+          {
+            "group": "JSX API",
+            "pages": [
+              "jsx/overview",
+              "jsx/components",
+              "jsx/examples"
+            ]
+          },
+          {
+            "group": "Widgets",
+            "pages": [
+              "widgets/block",
+              "widgets/paragraph",
+              "widgets/list",
+              "widgets/table",
+              "widgets/gauge",
+              "widgets/tabs",
+              "widgets/sparkline",
+              "widgets/barchart",
+              "widgets/scrollbar"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/kitchen-sink",
+              "examples/weather-dashboard",
+              "examples/chatbot"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core",
+            "pages": [
+              "api/terminal",
+              "api/buffer",
+              "api/layout",
+              "api/style",
+              "api/text",
+              "api/symbols"
+            ]
+          },
+          {
+            "group": "Backends",
+            "pages": [
+              "api/backends"
+            ]
+          },
+          {
+            "group": "Widget Renderers",
+            "pages": [
+              "api/widget-renderers"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Double-buffered rendering with minimal I/O",
+    "Pure functional architecture with zero classes",
+    "Rich layout system with constraints (Length, Percentage, Ratio, Fill)",
+    "Full style system with 16 ANSI, 256-color, and 24-bit RGB support",
+    "10+ built-in widgets (Block, List, Table, Gauge, Sparkline, etc.)",
+    "React-like JSX API for declarative UI composition",
+    "Wide character (CJK) support",
+    "TypeScript strict mode with complete type safety"
+  ],
+  "publicApiSurface": [
+    "createTerminal",
+    "terminalDraw",
+    "terminalDrawJsx",
+    "frameRenderWidget",
+    "frameRenderStatefulWidget",
+    "createLayout",
+    "splitLayout",
+    "lengthConstraint",
+    "percentageConstraint",
+    "ratioConstraint",
+    "fillConstraint",
+    "createStyle",
+    "styleFg",
+    "styleBg",
+    "styleAddModifier",
+    "Color",
+    "Modifier",
+    "blockBordered",
+    "createParagraph",
+    "renderParagraph",
+    "createList",
+    "renderStatefulList",
+    "createTable",
+    "renderTable",
+    "gaugePercent",
+    "renderGauge",
+    "createTabs",
+    "renderTabs",
+    "createSparkline",
+    "renderSparkline",
+    "createBarChart",
+    "renderBarChart",
+    "createScrollbar",
+    "renderStatefulScrollbar",
+    "createTestBackend",
+    "testBackendToString"
+  ]
+}
