@@ -10,12 +10,12 @@
   "navbar": {
     "primary": {
       "type": "github",
-      "href": "https://github.com/AhmadAwais/terminui"
+      "href": "https://github.com/ahmadawais/terminui"
     }
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/AhmadAwais/terminui"
+      "github": "https://github.com/ahmadawais/terminui"
     }
   },
   "navigation": {
